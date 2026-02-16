@@ -142,4 +142,18 @@
         </plugins>
     </build>
 
+    <!-- Publishing Configuration - GitHub Packages -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/Zequent/zqnt-client-sdk-java</url>
+        </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/Zequent/zqnt-client-sdk-java</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>
