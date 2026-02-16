@@ -4,13 +4,9 @@ import com.zequent.framework.edge.sdk.config.EdgeClientConfig;
 import com.zequent.framework.edge.sdk.interfaces.EdgeAdapterService;
 import com.zequent.framework.edge.sdk.models.CommandResult;
 import com.zequent.framework.edge.sdk.models.CurrentCapabilities;
-import io.quarkus.arc.DefaultBean;
-import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.concurrent.CompletableFuture;
 
-@DefaultBean
-@ApplicationScoped
 public class EdgeAdapterServiceImpl implements EdgeAdapterService {
 
 	private final EdgeClientConfig config;
@@ -23,7 +19,7 @@ public class EdgeAdapterServiceImpl implements EdgeAdapterService {
 	 * Get configured serial number
 	 */
 	protected String getDefaultSn() {
-		return config.sn();
+		return config.getSn();
 	}
 
 	// ==================== CONVENIENCE METHODS (no SN parameter needed) ====================

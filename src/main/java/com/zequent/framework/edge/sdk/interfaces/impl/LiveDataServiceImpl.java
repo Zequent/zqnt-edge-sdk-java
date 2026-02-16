@@ -2,172 +2,214 @@ package com.zequent.framework.edge.sdk.interfaces.impl;
 
 import com.zequent.framework.edge.sdk.interfaces.LiveDataService;
 import com.zequent.framework.edge.sdk.mapper.TelemetryMapper;
-import com.zequent.framework.services.livedata.proto.MutinyLiveDataServiceGrpc;
+import com.zequent.framework.services.livedata.proto.LiveDataResponse;
+import com.zequent.framework.services.livedata.proto.LiveDataServiceGrpc;
 import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
 import com.zequent.framework.edge.sdk.models.TelemetryRequestData;
-import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
-import jakarta.annotation.PreDestroy;
+import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Default implementation of LiveDataController that manages persistent gRPC streams
- * per device using BroadcastProcessor for high-performance telemetry streaming.
- * Supports both POJO-based and Proto-based APIs for flexibility.
- * Note: This class is not a CDI bean itself. It should be created via a @Produces method
- * in a configuration class that properly injects the required dependencies.
+ * Standard gRPC implementation of LiveDataService that manages persistent gRPC streams
+ * per device for high-performance telemetry streaming.
  */
 @Slf4j
 public class LiveDataServiceImpl implements LiveDataService {
 
 	private final TelemetryMapper telemetryMapper;
-	private final Map<String, BroadcastProcessor<ProduceTelemetryRequest>> processors = new ConcurrentHashMap<>();
+	private final LiveDataServiceGrpc.LiveDataServiceStub liveDataServiceStub;
+	private final Map<String, StreamObserver<ProduceTelemetryRequest>> activeStreams = new ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<Void>> streamFutures = new ConcurrentHashMap<>();
 	private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
-
-	private final MutinyLiveDataServiceGrpc.MutinyLiveDataServiceStub liveDataServiceStub;
+	private final ScheduledExecutorService reconnectScheduler = Executors.newScheduledThreadPool(1);
 
 	public LiveDataServiceImpl(TelemetryMapper telemetryMapper,
-							   MutinyLiveDataServiceGrpc.MutinyLiveDataServiceStub liveDataServiceStub) {
+							   LiveDataServiceGrpc.LiveDataServiceStub liveDataServiceStub) {
 		this.telemetryMapper = telemetryMapper;
 		this.liveDataServiceStub = liveDataServiceStub;
 	}
 
-	@PreDestroy
-	public void onDestroy() {
-		log.info("LiveDataController shutdown detected, cleaning up gRPC streams");
+	/**
+	 * Cleanup method - call this when shutting down
+	 */
+	public void shutdown() {
+		log.info("LiveDataService shutdown initiated, cleaning up gRPC streams");
 		shuttingDown.set(true);
-		closeAllStreams().await().atMost(Duration.ofSeconds(10));
+		closeAllStreams();
+		reconnectScheduler.shutdown();
+		try {
+			if (!reconnectScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+				reconnectScheduler.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			reconnectScheduler.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 	}
 
-
 	@Override
-	public Uni<Void> produceTelemetryData(TelemetryRequestData requestData) {
+	public CompletableFuture<Void> produceTelemetryData(TelemetryRequestData requestData) {
 		if (requestData == null) {
-			return Uni.createFrom().voidItem();
+			return CompletableFuture.completedFuture(null);
 		}
 
 		var request = telemetryMapper.map(requestData);
 		return produceTelemetry(requestData.getSn(), request);
 	}
 
-	// ========== Proto-based API Implementation ==========
-
 	@Override
-	public Uni<Void> produceTelemetry(String deviceSn, ProduceTelemetryRequest telemetryRequest) {
+	public CompletableFuture<Void> produceTelemetry(String deviceSn, ProduceTelemetryRequest telemetryRequest) {
 		if (shuttingDown.get()) {
-			log.warn("Cannot produce telemetry for device {} - controller is shutting down", deviceSn);
-			return Uni.createFrom().voidItem();
+			log.warn("Cannot produce telemetry for device {} - service is shutting down", deviceSn);
+			return CompletableFuture.completedFuture(null);
 		}
 
-		return Uni.createFrom().item(() -> {
-			var processor = getOrCreateProcessor(deviceSn);
-			if (processor != null) {
-				processor.onNext(telemetryRequest);
+		return CompletableFuture.supplyAsync(() -> {
+			StreamObserver<ProduceTelemetryRequest> stream = getOrCreateStream(deviceSn);
+			if (stream != null) {
+				try {
+					stream.onNext(telemetryRequest);
+				} catch (Exception e) {
+					log.error("Error sending telemetry for device {}: {}", deviceSn, e.getMessage());
+					// Stream might be broken, remove it
+					activeStreams.remove(deviceSn);
+					throw new CompletionException(e);
+				}
 			}
 			return null;
 		});
 	}
 
 	@Override
-	public Uni<Void> closeStream(String deviceSn) {
-		return Uni.createFrom().item(() -> {
-			var processor = processors.remove(deviceSn);
-			if (processor != null) {
+	public CompletableFuture<Void> closeStream(String deviceSn) {
+		return CompletableFuture.runAsync(() -> {
+			StreamObserver<ProduceTelemetryRequest> stream = activeStreams.remove(deviceSn);
+			CompletableFuture<Void> future = streamFutures.remove(deviceSn);
+
+			if (stream != null) {
 				try {
-					processor.onComplete();
+					stream.onCompleted();
 					log.info("Closed telemetry stream for device: {}", deviceSn);
 				} catch (Exception e) {
 					log.warn("Error closing stream for device {}: {}", deviceSn, e.getMessage());
 				}
 			}
-			return null;
+
+			if (future != null) {
+				future.complete(null);
+			}
 		});
 	}
 
 	@Override
-	public Uni<Void> closeAllStreams() {
-		return Uni.createFrom().item(() -> {
-			log.info("Closing all telemetry streams ({} active)", processors.size());
-			processors.forEach((deviceSn, processor) -> {
+	public CompletableFuture<Void> closeAllStreams() {
+		return CompletableFuture.runAsync(() -> {
+			log.info("Closing all telemetry streams ({} active)", activeStreams.size());
+
+			activeStreams.forEach((deviceSn, stream) -> {
 				try {
-					processor.onComplete();
+					stream.onCompleted();
 					log.debug("Completed stream for device: {}", deviceSn);
 				} catch (Exception e) {
 					log.warn("Error completing stream for device {}: {}", deviceSn, e.getMessage());
 				}
 			});
-			processors.clear();
+
+			activeStreams.clear();
+			streamFutures.values().forEach(f -> f.complete(null));
+			streamFutures.clear();
+
 			log.info("All telemetry streams closed");
-			return null;
 		});
 	}
 
-	private BroadcastProcessor<ProduceTelemetryRequest> getOrCreateProcessor(String deviceSn) {
+	private StreamObserver<ProduceTelemetryRequest> getOrCreateStream(String deviceSn) {
 		if (shuttingDown.get()) {
-			log.warn("Cannot create processor for device {} - controller is shutting down", deviceSn);
+			log.warn("Cannot create stream for device {} - service is shutting down", deviceSn);
 			return null;
 		}
 
-		return processors.computeIfAbsent(deviceSn, sn -> {
-			var processor = BroadcastProcessor.<ProduceTelemetryRequest>create();
-			subscribeProcessorToGrpc(sn, processor);
-			return processor;
+		return activeStreams.computeIfAbsent(deviceSn, sn -> {
+			CompletableFuture<Void> streamFuture = new CompletableFuture<>();
+			streamFutures.put(sn, streamFuture);
+			return createGrpcStream(sn, streamFuture);
 		});
 	}
 
-	private void subscribeProcessorToGrpc(String deviceSn, BroadcastProcessor<ProduceTelemetryRequest> processor) {
-		liveDataServiceStub.produceTelemetry(processor)
-				.onFailure(this::isNotShutdownError)
-					.invoke(e -> log.error("gRPC stream failed for device {}: {}", deviceSn, e.getMessage()))
-				.onFailure(this::isNotShutdownError)
-					.retry()
-					.withBackOff(Duration.ofSeconds(1), Duration.ofSeconds(30))
-					.withJitter(0.2)
-					.atMost(10)
-				.subscribe().with(
-						response -> log.debug("Telemetry response received for device {} :  {}", deviceSn, response),
-						failure -> {
-							if (!shuttingDown.get()) {
-								log.error("Telemetry stream terminated for device {} after retries: {}",
-										deviceSn, failure.getMessage());
-								processors.remove(deviceSn);
-								scheduleReconnect(deviceSn, processor);
-							}
-						}
-				);
-		log.info("Started gRPC telemetry stream for device {}", deviceSn);
+	private StreamObserver<ProduceTelemetryRequest> createGrpcStream(
+			String deviceSn,
+			CompletableFuture<Void> streamFuture) {
+
+		log.info("Creating gRPC telemetry stream for device {}", deviceSn);
+
+		StreamObserver<LiveDataResponse> responseObserver = new StreamObserver<LiveDataResponse>() {
+			@Override
+			public void onNext(LiveDataResponse response) {
+				log.debug("Telemetry response received for device {}", deviceSn);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				if (!shuttingDown.get() && !isShutdownError(t)) {
+					log.error("gRPC stream error for device {}: {}", deviceSn, t.getMessage());
+					activeStreams.remove(deviceSn);
+					streamFutures.remove(deviceSn);
+
+					// Schedule reconnection
+					scheduleReconnect(deviceSn, 5);
+				}
+				streamFuture.completeExceptionally(t);
+			}
+
+			@Override
+			public void onCompleted() {
+				log.info("gRPC stream completed for device {}", deviceSn);
+				activeStreams.remove(deviceSn);
+				streamFutures.remove(deviceSn);
+				streamFuture.complete(null);
+			}
+		};
+
+		return liveDataServiceStub.produceTelemetry(responseObserver);
 	}
 
-	private boolean isNotShutdownError(Throwable t) {
+	private boolean isShutdownError(Throwable t) {
 		if (shuttingDown.get()) {
-			return false;
+			return true;
 		}
 		String msg = t.getMessage();
-		return msg == null ||
-				!(msg.contains("shutdown") ||
-						msg.contains("UNAVAILABLE") && msg.contains("Channel"));
+		return msg != null && (
+			msg.contains("shutdown") ||
+			msg.contains("UNAVAILABLE") && msg.contains("Channel")
+		);
 	}
 
-	private void scheduleReconnect(String deviceSn, BroadcastProcessor<ProduceTelemetryRequest> processor) {
+	private void scheduleReconnect(String deviceSn, int delaySeconds) {
 		if (shuttingDown.get()) {
 			return;
 		}
 
-		Uni.createFrom().item(() -> processor)
-				.onItem().delayIt().by(Duration.ofSeconds(30))
-				.subscribe().with(
-						p -> {
-							if (!shuttingDown.get()) {
-								log.info("Attempting to reconnect gRPC stream for device {}", deviceSn);
-								processors.put(deviceSn, p);
-								subscribeProcessorToGrpc(deviceSn, p);
-							}
-						}
-				);
+		log.info("Scheduling reconnection for device {} in {} seconds", deviceSn, delaySeconds);
+
+		reconnectScheduler.schedule(() -> {
+			if (!shuttingDown.get() && !activeStreams.containsKey(deviceSn)) {
+				log.info("Attempting to reconnect gRPC stream for device {}", deviceSn);
+				try {
+					CompletableFuture<Void> newFuture = new CompletableFuture<>();
+					StreamObserver<ProduceTelemetryRequest> newStream = createGrpcStream(deviceSn, newFuture);
+					activeStreams.put(deviceSn, newStream);
+					streamFutures.put(deviceSn, newFuture);
+				} catch (Exception e) {
+					log.error("Failed to reconnect stream for device {}: {}", deviceSn, e.getMessage());
+					// Retry with exponential backoff
+					int nextDelay = Math.min(delaySeconds * 2, 60);
+					scheduleReconnect(deviceSn, nextDelay);
+				}
+			}
+		}, delaySeconds, TimeUnit.SECONDS);
 	}
 }

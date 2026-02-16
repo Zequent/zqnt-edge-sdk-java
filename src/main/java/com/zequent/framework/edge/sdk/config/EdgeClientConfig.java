@@ -2,35 +2,25 @@ package com.zequent.framework.edge.sdk.config;
 
 import com.zequent.framework.common.proto.AssetTypeEnum;
 import com.zequent.framework.common.proto.AssetVendor;
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
-import io.smallrye.config.WithName;
+import lombok.Builder;
+import lombok.Data;
 
 import java.time.Duration;
-import java.util.Optional;
 
-@ConfigMapping(prefix = "zequent.edge")
-public interface EdgeClientConfig {
+@Data
+@Builder
+public class EdgeClientConfig {
 
+	private String endpoint;
+	private String sn;
 
-	@WithName("endpoint")
-	String endpoint();
+	@Builder.Default
+	private Duration timeout = Duration.ofSeconds(30);
 
-	@WithName("sn")
-	String sn();
+	@Builder.Default
+	private int maxRetries = 3;
 
-	@WithDefault("30s")
-	Duration timeout();
-
-	@WithDefault("3")
-	int maxRetries();
-
-
-	@WithName("asset-type")
-	AssetTypeEnum assetType();
-
-	@WithName("asset-vendor")
-	AssetVendor assetVendor();
-
-	Optional<String> assetId();
+	private AssetTypeEnum assetType;
+	private AssetVendor assetVendor;
+	private String assetId;
 }

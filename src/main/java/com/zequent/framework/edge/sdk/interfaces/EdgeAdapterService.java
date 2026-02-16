@@ -1,10 +1,8 @@
 package com.zequent.framework.edge.sdk.interfaces;
 
 import com.zequent.framework.edge.sdk.models.*;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
-
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 
 public interface EdgeAdapterService {
@@ -64,7 +62,7 @@ public interface EdgeAdapterService {
 	 * This allows clients to stream manual control inputs (joystick commands) to the asset
 	 * Default: Returns NOT_IMPLEMENTED error
 	 */
-	default CompletableFuture<CommandResult> manualControlInput(Multi<ManualControlInput> inputStream) {
+	default CompletableFuture<CommandResult> manualControlInput(Stream<ManualControlInput> inputStream) {
 		return CompletableFuture.completedFuture(
 				CommandResult.notImplemented("manualControlInput is not implemented for this asset", "unknown")
 		);

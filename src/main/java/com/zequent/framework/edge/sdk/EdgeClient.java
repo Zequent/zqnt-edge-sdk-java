@@ -1,14 +1,9 @@
 package com.zequent.framework.edge.sdk;
 
-
-
 import com.zequent.framework.edge.sdk.config.EdgeClientConfig;
 import com.zequent.framework.edge.sdk.interfaces.EdgeAdapterService;
-
-import jakarta.enterprise.context.ApplicationScoped;
 import lombok.Getter;
 
-@ApplicationScoped
 public class EdgeClient {
 
 	@Getter
@@ -25,11 +20,9 @@ public class EdgeClient {
 	}
 
 	/**
-	 * Get the configured serial number from application.properties
+	 * Get the configured serial number
 	 */
 	public String getSn() {
-		return config.sn();
+		return config.getSn();
 	}
-
-
 }

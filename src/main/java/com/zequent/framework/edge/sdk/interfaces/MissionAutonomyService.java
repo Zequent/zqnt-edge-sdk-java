@@ -1,25 +1,23 @@
 package com.zequent.framework.edge.sdk.interfaces;
 
-import com.zequent.framework.common.proto.SchedulerProtoDTO;
-import com.zequent.framework.common.proto.TaskProtoDTO;
-import com.zequent.framework.edge.sdk.models.MissionData;
 import com.zequent.framework.services.mission.proto.*;
-import io.smallrye.mutiny.Uni;
+import com.zequent.framework.utils.missionautonomy.dto.MissionDTO;
+import com.zequent.framework.utils.missionautonomy.dto.SchedulerDTO;
+import com.zequent.framework.utils.missionautonomy.dto.TaskDTO;
+
+import java.util.concurrent.CompletableFuture;
 
 public interface MissionAutonomyService {
 
-	Uni<MissionData> createMission(CreateMissionRequest createMissionRequest);
+	CompletableFuture<MissionDTO> createMission(CreateMissionRequest createMissionRequest);
 
-	Uni<MissionData> updateMission(UpdateMissionRequest updateMissionRequest);
+	CompletableFuture<MissionDTO> updateMission(UpdateMissionRequest updateMissionRequest);
 
-	Uni<MissionData> getMission(GetMissionRequest getRequest);
+	CompletableFuture<MissionDTO> getMission(GetMissionRequest getRequest);
 
-	Uni<TaskProtoDTO> getTask(GetTaskRequest getTaskRequest);
+	CompletableFuture<TaskDTO> getTask(GetTaskRequest getTaskRequest);
 
-	Uni<TaskProtoDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
+	CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
 
-	Uni<SchedulerProtoDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
-
-
-
+	CompletableFuture<SchedulerDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
 }
