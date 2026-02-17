@@ -57,6 +57,7 @@ public class LiveDataServiceImpl implements LiveDataService {
 			return CompletableFuture.completedFuture(null);
 		}
 
+		// Perform mapping in the current (CDI) context before going async
 		var request = telemetryMapper.map(requestData);
 		return produceTelemetry(requestData.getSn(), request);
 	}
@@ -68,20 +69,22 @@ public class LiveDataServiceImpl implements LiveDataService {
 			return CompletableFuture.completedFuture(null);
 		}
 
-		return CompletableFuture.supplyAsync(() -> {
-			StreamObserver<ProduceTelemetryRequest> stream = getOrCreateStream(deviceSn);
-			if (stream != null) {
-				try {
-					stream.onNext(telemetryRequest);
-				} catch (Exception e) {
-					log.error("Error sending telemetry for device {}: {}", deviceSn, e.getMessage());
-					// Stream might be broken, remove it
-					activeStreams.remove(deviceSn);
-					throw new CompletionException(e);
-				}
-			}
-			return null;
-		});
+		// Get or create stream in current thread context
+		StreamObserver<ProduceTelemetryRequest> stream = getOrCreateStream(deviceSn);
+		if (stream == null) {
+			return CompletableFuture.completedFuture(null);
+		}
+
+		// Send telemetry - this is lightweight and doesn't need to be async
+		try {
+			stream.onNext(telemetryRequest);
+			return CompletableFuture.completedFuture(null);
+		} catch (Exception e) {
+			log.error("Error sending telemetry for device {}: {}", deviceSn, e.getMessage());
+			// Stream might be broken, remove it
+			activeStreams.remove(deviceSn);
+			return CompletableFuture.failedFuture(e);
+		}
 	}
 
 	@Override
