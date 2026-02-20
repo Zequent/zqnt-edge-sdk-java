@@ -1,7 +1,8 @@
-package com.zequent.framework.edge.sdk;
+package com.zqnt.sdk.edge;
 
-import com.zequent.framework.edge.sdk.config.EdgeClientConfig;
-import com.zequent.framework.edge.sdk.interfaces.EdgeAdapterService;
+import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
+import com.zqnt.sdk.edge.config.EdgeClientConfig;
+
 import lombok.Getter;
 
 public class EdgeClient {

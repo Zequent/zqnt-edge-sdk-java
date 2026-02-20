@@ -1,4 +1,4 @@
-package com.zequent.framework.edge.sdk.config;
+package com.zqnt.sdk.edge.config;
 
 import com.zequent.framework.common.proto.AssetTypeEnum;
 import com.zequent.framework.common.proto.AssetVendor;
