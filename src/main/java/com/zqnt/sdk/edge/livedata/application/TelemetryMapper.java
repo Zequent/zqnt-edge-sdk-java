@@ -5,9 +5,9 @@ import com.zequent.framework.common.proto.RequestBase;
 import com.zequent.framework.services.livedata.proto.AssetTelemetry;
 import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
 import com.zequent.framework.services.livedata.proto.SubAssetTelemetry;
-import com.zequent.framework.utils.core.ProtobufHelpers;
-import com.zequent.framework.utils.edge.sdk.dto.AssetTelemetryData;
-import com.zequent.framework.utils.edge.sdk.dto.SubAssetTelemetryData;
+import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 
 import java.time.Instant;

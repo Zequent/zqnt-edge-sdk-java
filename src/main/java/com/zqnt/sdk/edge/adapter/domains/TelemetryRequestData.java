@@ -1,8 +1,8 @@
 package com.zqnt.sdk.edge.adapter.domains;
 
 import com.zequent.framework.common.proto.LiveDataType;
-import com.zequent.framework.utils.edge.sdk.dto.AssetTelemetryData;
-import com.zequent.framework.utils.edge.sdk.dto.SubAssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

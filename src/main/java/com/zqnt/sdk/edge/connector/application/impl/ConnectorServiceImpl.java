@@ -4,8 +4,10 @@ import com.zequent.framework.common.proto.RequestBase;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
 import com.zqnt.sdk.edge.connector.application.ConnectorService;
 import com.zequent.framework.services.connector.proto.*;
-import com.zequent.framework.utils.core.ProtobufHelpers;
-import com.zequent.framework.utils.missionautonomy.dto.*;
+import com.zqnt.utils.asset.domains.AssetDTO;
+import com.zqnt.utils.asset.domains.SubAssetDTO;
+import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.utils.missionautonomy.domains.*;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 

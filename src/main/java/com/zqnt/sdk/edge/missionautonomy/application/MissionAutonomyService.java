@@ -1,9 +1,9 @@
 package com.zqnt.sdk.edge.missionautonomy.application;
 
 import com.zequent.framework.services.mission.proto.*;
-import com.zequent.framework.utils.missionautonomy.dto.MissionDTO;
-import com.zequent.framework.utils.missionautonomy.dto.SchedulerDTO;
-import com.zequent.framework.utils.missionautonomy.dto.TaskDTO;
+import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
+import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 
 import java.util.concurrent.CompletableFuture;
 

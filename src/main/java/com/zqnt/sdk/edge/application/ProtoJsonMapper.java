@@ -13,7 +13,9 @@ import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
 import com.zqnt.sdk.edge.adapter.domains.TakeOffRequest;
 import com.zequent.framework.sdks.edge.proto.*;
-import com.zequent.framework.utils.missionautonomy.dto.*;
+import com.zqnt.utils.asset.domains.AssetDTO;
+import com.zqnt.utils.asset.domains.SubAssetDTO;
+import com.zqnt.utils.missionautonomy.domains.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;

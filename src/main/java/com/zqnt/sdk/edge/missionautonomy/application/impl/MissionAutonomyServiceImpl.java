@@ -3,9 +3,9 @@ package com.zqnt.sdk.edge.missionautonomy.application.impl;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
 import com.zqnt.sdk.edge.missionautonomy.application.MissionAutonomyService;
 import com.zequent.framework.services.mission.proto.*;
-import com.zequent.framework.utils.missionautonomy.dto.MissionDTO;
-import com.zequent.framework.utils.missionautonomy.dto.SchedulerDTO;
-import com.zequent.framework.utils.missionautonomy.dto.TaskDTO;
+import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
+import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 

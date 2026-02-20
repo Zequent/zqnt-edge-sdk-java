@@ -9,7 +9,7 @@ import com.zqnt.sdk.edge.adapter.domains.LiveStreamStopRequest;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
 import com.zequent.framework.sdks.edge.proto.*;
-import com.zequent.framework.utils.core.ProtobufHelpers;
+import com.zqnt.utils.core.ProtobufHelpers;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
