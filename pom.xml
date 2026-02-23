@@ -173,12 +173,12 @@
     <!-- Publishing Configuration - GitHub Packages -->
     <distributionManagement>
         <repository>
-            <id>zequent-edge-sdk-repo</id>
+            <id>zqnt-edge-sdk-repo</id>
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/Zequent/zqnt-edge-sdk-java</url>
         </repository>
         <snapshotRepository>
-            <id>zequent-edge-sdk-repo</id>
+            <id>zqnt-edge-sdk-repo</id>
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/Zequent/zqnt-edge-sdk-java</url>
         </snapshotRepository>
