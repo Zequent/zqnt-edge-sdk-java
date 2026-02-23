@@ -7,7 +7,7 @@
     <servers>
         <server>
             <!-- MUST match distributionManagement.repository.id in pom.xml -->
-            <id>zequent-utils-repo</id>
+            <id>zqnt-utils-repo</id>
             <!-- Provided by workflow as PACKAGES_TOKEN (can be GITHUB_TOKEN or a PAT) -->
             <username>${env.GITHUB_ACTOR}</username>
             <password>${env.GITHUB_TOKEN}</password>
@@ -15,7 +15,7 @@
 
         <server>
             <!-- MUST match distributionManagement.repository.id in pom.xml -->
-            <id>zequent-edge-sdk-repo</id>
+            <id>zqnt-edge-sdk-repo</id>
             <!-- Provided by workflow as PACKAGES_TOKEN (can be GITHUB_TOKEN or a PAT) -->
             <username>${env.GITHUB_ACTOR}</username>
             <password>${env.GITHUB_TOKEN}</password>
