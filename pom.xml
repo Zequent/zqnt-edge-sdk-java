@@ -46,11 +46,12 @@
 
     </properties>
 
+    <!-- GitHub Packages Repository -->
     <repositories>
         <repository>
-            <id>github</id>
+            <id>zqnt-utils-repo</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Zequent/zequent-framework</url>
+            <url>https://maven.pkg.github.com/Zequent/zqnt-utils</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -59,6 +60,7 @@
             </snapshots>
         </repository>
     </repositories>
+
 
     <dependencies>
         <dependency>
@@ -171,12 +173,12 @@
     <!-- Publishing Configuration - GitHub Packages -->
     <distributionManagement>
         <repository>
-            <id>github</id>
+            <id>zequent-edge-sdk-repo</id>
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/Zequent/zqnt-edge-sdk-java</url>
         </repository>
         <snapshotRepository>
-            <id>github</id>
+            <id>zequent-edge-sdk-repo</id>
             <name>GitHub Packages</name>
             <url>https://maven.pkg.github.com/Zequent/zqnt-edge-sdk-java</url>
         </snapshotRepository>
