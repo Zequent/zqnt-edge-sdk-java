@@ -72,7 +72,7 @@ public interface EdgeAdapterService {
 	 * This allows clients to stream manual control inputs (joystick commands) to the asset
 	 * Default: Returns NOT_IMPLEMENTED error
 	 */
-	default CompletableFuture<CommandResult> manualControlInput(Stream<ManualControlInput> inputStream) {
+	default CompletableFuture<CommandResult> manualControlInput(ManualControlInput inputStream) {
 		return CompletableFuture.completedFuture(
 				CommandResult.notImplemented("manualControlInput is not implemented for this asset", "unknown")
 		);

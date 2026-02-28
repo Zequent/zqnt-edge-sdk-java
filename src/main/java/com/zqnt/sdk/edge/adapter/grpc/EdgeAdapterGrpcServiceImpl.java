@@ -114,14 +114,22 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 		return new StreamObserver<EdgeManualControlInputRequest>() {
 			private String sn;
 
-			@Override
 			public void onNext(EdgeManualControlInputRequest request) {
 				ManualControlInput input = protoJsonMapper.map(request);
-				inputs.add(input);
-				if (sn == null) {
-					sn = input.getSn();
-					log.info("Starting manual control input stream for SN: {}", sn);
+				if (this.sn == null) {
+					this.sn = input.getSn();
+					log.info("Starting manual control input stream for SN: {}", this.sn);
 				}
+				edgeAdapterService.manualControlInput(input)
+						.exceptionally(throwable -> {
+							log.error("Failed to process input", throwable);
+							return null;
+						});
+			}
+
+			public void onCompleted() {
+				log.info("Manual control input stream completed for SN: {}", sn);
+				responseObserver.onCompleted();
 			}
 
 			@Override
@@ -130,36 +138,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				responseObserver.onError(t);
 			}
 
-			@Override
-			public void onCompleted() {
-				if (inputs.isEmpty()) {
-					responseObserver.onError(new IllegalArgumentException("Empty input stream"));
-					return;
-				}
 
-				String finalSn = sn;
-				edgeAdapterService.manualControlInput(inputs.stream())
-						.thenAccept(result -> {
-							var base = RequestBase.newBuilder()
-									.setSn(finalSn)
-									.setTid(java.util.UUID.randomUUID().toString())
-									.setTimestamp(ProtobufHelpers.now())
-									.build();
-							responseObserver.onNext(toEdgeResponse(base, result));
-							responseObserver.onCompleted();
-						})
-						.exceptionally(throwable -> {
-							log.error("Manual control input failed for SN: {}", finalSn, throwable);
-							var base = RequestBase.newBuilder()
-									.setSn(finalSn)
-									.setTid(java.util.UUID.randomUUID().toString())
-									.setTimestamp(ProtobufHelpers.now())
-									.build();
-							responseObserver.onNext(toErrorResponse(base, throwable));
-							responseObserver.onCompleted();
-							return null;
-						});
-			}
 		};
 	}
 
