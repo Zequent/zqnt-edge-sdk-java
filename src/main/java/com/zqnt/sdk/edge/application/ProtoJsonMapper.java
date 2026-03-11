@@ -13,9 +13,11 @@ import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
 import com.zqnt.sdk.edge.adapter.domains.TakeOffRequest;
 import com.zequent.framework.sdks.edge.proto.*;
+import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.missionautonomy.domains.*;
+import com.zqnt.utils.missionautonomy.domains.config.TaskConfigTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -32,12 +34,14 @@ public class ProtoJsonMapper {
     // Edge Request Mappings
 
     public Coordinates map(com.zequent.framework.common.proto.Coordinates proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
         return new Coordinates(proto.getLatitude(), proto.getLongitude(), proto.getAltitude());
     }
 
     public TakeOffRequest map(EdgeTakeOffRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return TakeOffRequest.builder()
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
@@ -46,7 +50,8 @@ public class ProtoJsonMapper {
     }
 
     public GoToRequest map(EdgeGoToRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return GoToRequest.builder()
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
@@ -55,7 +60,8 @@ public class ProtoJsonMapper {
     }
 
     public ReturnToHomeRequest map(EdgeReturnToHomeRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return ReturnToHomeRequest.builder()
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
@@ -63,7 +69,8 @@ public class ProtoJsonMapper {
     }
 
     public LiveStreamStartRequest map(EdgeStartLiveStreamRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return LiveStreamStartRequest.builder()
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
@@ -74,7 +81,8 @@ public class ProtoJsonMapper {
     }
 
     public LiveStreamStopRequest map(EdgeStopLiveStreamRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return LiveStreamStopRequest.builder()
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
@@ -83,7 +91,8 @@ public class ProtoJsonMapper {
     }
 
     public ChangeLensRequest map(EdgeChangeCameraLensRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return ChangeLensRequest.builder()
                 .sn(request.getBase().getSn())
                 .lens(request.getRequest().getLens())
@@ -91,7 +100,8 @@ public class ProtoJsonMapper {
     }
 
     public ChangeZoomRequest map(EdgeChangeCameraZoomRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return ChangeZoomRequest.builder()
                 .sn(request.getBase().getSn())
                 .lens(request.getRequest().getLens())
@@ -100,7 +110,8 @@ public class ProtoJsonMapper {
     }
 
     public LookAtRequest map(EdgeLookAtRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return LookAtRequest.builder()
                 .sn(request.getBase().getSn())
                 .latitude(request.getRequest().getLatitude())
@@ -112,7 +123,8 @@ public class ProtoJsonMapper {
     }
 
     public ManualControlInput map(EdgeManualControlInputRequest request) {
-        if (request == null) return null;
+        if (request == null)
+            return null;
         return ManualControlInput.builder()
                 .sn(request.getBase().getSn())
                 .roll(request.getRequest().getRoll())
@@ -126,7 +138,8 @@ public class ProtoJsonMapper {
     // Asset/Mission DTO Mappings
 
     public SubAssetDTO map(SubAssetProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         SubAssetDTO.SubAssetDTOBuilder builder = SubAssetDTO.builder();
         builder.sn(proto.getSn());
@@ -159,7 +172,8 @@ public class ProtoJsonMapper {
     }
 
     public SubAssetProtoDTO map(SubAssetDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         SubAssetProtoDTO.Builder builder = SubAssetProtoDTO.newBuilder();
 
@@ -207,7 +221,8 @@ public class ProtoJsonMapper {
     }
 
     public AssetDTO map(AssetProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         AssetDTO.AssetDTOBuilder builder = AssetDTO.builder();
 
@@ -243,12 +258,12 @@ public class ProtoJsonMapper {
         }
         builder.organization(UUID.fromString(proto.getOrganization()));
 
-
         return builder.build();
     }
 
     public AssetProtoDTO map(AssetDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         AssetProtoDTO.Builder builder = AssetProtoDTO.newBuilder();
 
@@ -300,7 +315,8 @@ public class ProtoJsonMapper {
     }
 
     public OrganizationDTO map(OrganizationProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         OrganizationDTO.OrganizationDTOBuilder builder = OrganizationDTO.builder();
         builder.id(UUID.fromString(proto.getId()));
@@ -310,7 +326,8 @@ public class ProtoJsonMapper {
     }
 
     public OrganizationProtoDTO map(OrganizationDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         OrganizationProtoDTO.Builder builder = OrganizationProtoDTO.newBuilder();
 
@@ -329,7 +346,8 @@ public class ProtoJsonMapper {
     }
 
     public MissionDTO map(MissionProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         MissionDTO.MissionDTOBuilder builder = MissionDTO.builder();
         builder.name(proto.getName());
@@ -362,13 +380,15 @@ public class ProtoJsonMapper {
         if (proto.hasUpdatedUser()) {
             builder.updatedUser(proto.getUpdatedUser());
         }
-        // Note: assignedAssets Set<String> would need proto repeated field mapping if available
+        // Note: assignedAssets Set<String> would need proto repeated field mapping if
+        // available
 
         return builder.build();
     }
 
     public MissionProtoDTO map(MissionDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         MissionProtoDTO.Builder builder = MissionProtoDTO.newBuilder();
 
@@ -402,13 +422,15 @@ public class ProtoJsonMapper {
         if (dto.getUpdatedUser() != null) {
             builder.setUpdatedUser(dto.getUpdatedUser());
         }
-        // Note: assignedAssets Set<String> would need proto repeated field mapping if available
+        // Note: assignedAssets Set<String> would need proto repeated field mapping if
+        // available
 
         return builder.build();
     }
 
     public TaskDTO map(TaskProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         TaskDTO.TaskDTOBuilder builder = TaskDTO.builder();
         builder.status(proto.getStatus());
@@ -434,74 +456,9 @@ public class ProtoJsonMapper {
         if (proto.hasSnNumber()) {
             builder.snNumber(proto.getSnNumber());
         }
-        if (proto.hasFlightId()) {
-            builder.flightId(proto.getFlightId());
-        }
-        if (proto.hasFlyToWaylineMode()) {
-            builder.flyToWaylineMode(proto.getFlyToWaylineMode());
-        }
-        if (proto.hasWaylineFinishAction()) {
-            builder.waylineFinishAction(proto.getWaylineFinishAction());
-        }
-        if (proto.hasExitWaylineWhenRcLostEnum()) {
-            builder.exitWaylineWhenRcLostEnum(proto.getExitWaylineWhenRcLostEnum());
-        }
-        if (proto.hasRcLostActionEnum()) {
-            builder.rcLostActionEnum(proto.getRcLostActionEnum());
-        }
-        if (proto.hasTakeOffSecurityHeight()) {
-            builder.takeOffSecurityHeight(proto.getTakeOffSecurityHeight());
-        }
-        if (proto.hasGlobalTransitionSpeed()) {
-            builder.globalTransitionSpeed(proto.getGlobalTransitionSpeed());
-        }
-        if (proto.hasWaylineType()) {
-            builder.waylineType(proto.getWaylineType());
-        }
-        if (proto.hasPayloadImagingType()) {
-            builder.payloadImagingType(proto.getPayloadImagingType());
-        }
-        if (proto.hasWaylineTurnMode()) {
-            builder.waylineTurnMode(proto.getWaylineTurnMode());
-        }
-        if (proto.hasUseStraightLine()) {
-            builder.useStraightLine(proto.getUseStraightLine());
-        }
-        if (proto.hasGimbalPitchMode()) {
-            builder.gimbalPitchMode(proto.getGimbalPitchMode());
-        }
-        if (proto.hasGlobalSpeed()) {
-            builder.globalSpeed(proto.getGlobalSpeed());
-        }
-        if (proto.hasGlobalHeight()) {
-            builder.globalHeight(proto.getGlobalHeight());
-        }
-        if (proto.hasFileUrl()) {
-            builder.fileUrl(proto.getFileUrl());
-        }
-        if (proto.hasFileMd5()) {
-            builder.fileMd5(proto.getFileMd5());
-        }
-        if (proto.hasFlightAreaFileUrl()) {
-            builder.flightAreaFileUrl(proto.getFlightAreaFileUrl());
-        }
-        if (proto.hasFlightAreaChecksum()) {
-            builder.flightAreaChecksum(proto.getFlightAreaChecksum());
-        }
-        if (proto.hasRthAltitude()) {
-            builder.rthAltitude(proto.getRthAltitude());
-        }
-        if (proto.hasRthMode()) {
-            builder.rthMode(proto.getRthMode());
-        }
-        if (proto.hasRthSpeed()) {
-            builder.rthSpeed(proto.getRthSpeed());
-        }
-        if (proto.hasOutOfControlAction()) {
-            builder.outOfControlAction(proto.getOutOfControlAction());
-        }
-        if (proto.hasWaylinePrecisionType()) {
-            builder.waylinePrecisionType(proto.getWaylinePrecisionType());
+
+        if (proto.hasConfig()) {
+            builder.config(JsonUtils.fromJson(proto.getConfig(), TaskConfigTemplate.class));
         }
         if (proto.hasCurrentProgress()) {
             builder.currentProgress(proto.getCurrentProgress());
@@ -517,7 +474,8 @@ public class ProtoJsonMapper {
     }
 
     public TaskProtoDTO map(TaskDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         TaskProtoDTO.Builder builder = TaskProtoDTO.newBuilder();
 
@@ -545,77 +503,9 @@ public class ProtoJsonMapper {
         if (dto.getSnNumber() != null) {
             builder.setSnNumber(dto.getSnNumber());
         }
-        if (dto.getFlightId() != null) {
-            builder.setFlightId(dto.getFlightId());
-        }
-        if (dto.getFlyToWaylineMode() != null) {
-            builder.setFlyToWaylineMode(dto.getFlyToWaylineMode());
-        }
-        if (dto.getWaylineFinishAction() != null) {
-            builder.setWaylineFinishAction(dto.getWaylineFinishAction());
-        }
-        if (dto.getExitWaylineWhenRcLostEnum() != null) {
-            builder.setExitWaylineWhenRcLostEnum(dto.getExitWaylineWhenRcLostEnum());
-        }
-        if (dto.getRcLostActionEnum() != null) {
-            builder.setRcLostActionEnum(dto.getRcLostActionEnum());
-        }
-        if (dto.getTakeOffSecurityHeight() != null) {
-            builder.setTakeOffSecurityHeight(dto.getTakeOffSecurityHeight());
-        }
-        if (dto.getGlobalTransitionSpeed() != null) {
-            builder.setGlobalTransitionSpeed(dto.getGlobalTransitionSpeed());
-        }
-        if (dto.getWaylineType() != null) {
-            builder.setWaylineType(dto.getWaylineType());
-        }
-        if (dto.getPayloadImagingType() != null) {
-            builder.setPayloadImagingType(dto.getPayloadImagingType());
-        }
-        if (dto.getWaylineTurnMode() != null) {
-            builder.setWaylineTurnMode(dto.getWaylineTurnMode());
-        }
-        if (dto.getUseStraightLine() != null) {
-            builder.setUseStraightLine(dto.getUseStraightLine());
-        }
-        if (dto.getGimbalPitchMode() != null) {
-            builder.setGimbalPitchMode(dto.getGimbalPitchMode());
-        }
-        if (dto.getGlobalGimbalPitch() != null) {
-            builder.setGlobalGimbalPitch(dto.getGlobalGimbalPitch());
-        }
-        if (dto.getGlobalSpeed() != null) {
-            builder.setGlobalSpeed(dto.getGlobalSpeed());
-        }
-        if (dto.getGlobalHeight() != null) {
-            builder.setGlobalHeight(dto.getGlobalHeight());
-        }
-        if (dto.getFileUrl() != null) {
-            builder.setFileUrl(dto.getFileUrl());
-        }
-        if (dto.getFileMd5() != null) {
-            builder.setFileMd5(dto.getFileMd5());
-        }
-        if (dto.getFlightAreaFileUrl() != null) {
-            builder.setFlightAreaFileUrl(dto.getFlightAreaFileUrl());
-        }
-        if (dto.getFlightAreaChecksum() != null) {
-            builder.setFlightAreaChecksum(dto.getFlightAreaChecksum());
-        }
-        if (dto.getRthAltitude() != null) {
-            builder.setRthAltitude(dto.getRthAltitude());
-        }
-        if (dto.getRthMode() != null) {
-            builder.setRthMode(dto.getRthMode());
-        }
-        if (dto.getRthSpeed() != null) {
-            builder.setRthSpeed(dto.getRthSpeed());
-        }
-        if (dto.getOutOfControlAction() != null) {
-            builder.setOutOfControlAction(dto.getOutOfControlAction());
-        }
-        if (dto.getWaylinePrecisionType() != null) {
-            builder.setWaylinePrecisionType(dto.getWaylinePrecisionType());
+
+        if (dto.getConfig() != null) {
+            builder.setConfig(JsonUtils.toJson(dto.getConfig()));
         }
         if (dto.getCurrentProgress() != null) {
             builder.setCurrentProgress(dto.getCurrentProgress());
@@ -631,7 +521,8 @@ public class ProtoJsonMapper {
     }
 
     public SchedulerDTO map(SchedulerProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         SchedulerDTO.SchedulerDTOBuilder builder = SchedulerDTO.builder();
 
@@ -659,7 +550,8 @@ public class ProtoJsonMapper {
     }
 
     public SchedulerProtoDTO map(SchedulerDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         SchedulerProtoDTO.Builder builder = SchedulerProtoDTO.newBuilder();
 
@@ -692,16 +584,13 @@ public class ProtoJsonMapper {
     }
 
     public WaypointDTO map(WaypointProtoDTO proto) {
-        if (proto == null) return null;
+        if (proto == null)
+            return null;
 
         WaypointDTO.WaypointDTOBuilder builder = WaypointDTO.builder();
 
-        if (proto.hasId()) {
-            builder.id(UUID.fromString(proto.getId()));
-        }
-            builder.latitude(proto.getLatitude());
-
-            builder.longitude(proto.getLongitude());
+        builder.latitude(proto.getLatitude());
+        builder.longitude(proto.getLongitude());
 
         if (proto.hasAltitude()) {
             builder.altitude(proto.getAltitude());
@@ -721,21 +610,16 @@ public class ProtoJsonMapper {
         if (proto.hasGimbalPitch()) {
             builder.gimbalPitch(proto.getGimbalPitch());
         }
-        if (proto.hasTaskId()) {
-            builder.task(UUID.fromString(proto.getTaskId()));
-        }
+  
 
         return builder.build();
     }
 
     public WaypointProtoDTO map(WaypointDTO dto) {
-        if (dto == null) return null;
+        if (dto == null)
+            return null;
 
         WaypointProtoDTO.Builder builder = WaypointProtoDTO.newBuilder();
-
-        if (dto.getId() != null) {
-            builder.setId(dto.getId().toString());
-        }
 
         if (dto.getLatitude() != null) {
             builder.setLatitude(dto.getLatitude());
@@ -761,42 +645,11 @@ public class ProtoJsonMapper {
         if (dto.getGimbalPitch() != null) {
             builder.setGimbalPitch(dto.getGimbalPitch());
         }
-        if (dto.getTask() != null) {
-            builder.setTaskId(dto.getTask().toString());
-        }
 
         return builder.build();
     }
-
-
-    public List<WaypointDTO> map(List<WaypointProtoDTO> waypointProtos) {
-        List<WaypointDTO> waypoints = new ArrayList<>();
-        for (WaypointProtoDTO waypointProto : waypointProtos) {
-            waypoints.add(map(waypointProto));
-        }
-        return waypoints;
-    }
-
-    public List<WaypointDTO> mapWaypointList(List<WaypointProtoDTO> protoList) {
-        if (protoList == null) return null;
-        List<WaypointDTO> dtoList = new ArrayList<>();
-        for (WaypointProtoDTO proto : protoList) {
-            dtoList.add(map(proto));
-        }
-        return dtoList;
-    }
-
-    public List<WaypointProtoDTO> mapWaypointProtoList(List<WaypointDTO> dtoList) {
-        if (dtoList == null) return null;
-        List<WaypointProtoDTO> protoList = new ArrayList<>();
-        for (WaypointDTO dto : dtoList) {
-            protoList.add(map(dto));
-        }
-        return protoList;
-    }
-
+    
     // Timestamp conversion utilities
-
     public LocalDateTime toLocalDateTime(Timestamp timestamp) {
         if (timestamp == null) {
             return null;

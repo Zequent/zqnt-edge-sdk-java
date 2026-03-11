@@ -10,8 +10,6 @@ import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.missionautonomy.domains.*;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
@@ -462,23 +460,5 @@ public class ConnectorServiceImpl implements ConnectorService {
 				});
 	}
 
-	@Override
-	public CompletableFuture<List<WaypointDTO>> getWaypointsByTaskId(String id) {
-		var request = ConnectorGetWaypointsByTaskId.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTimestamp(ProtobufHelpers.now())
-						.setTid(UUID.randomUUID().toString())
-						.build())
-				.setTaskId(id)
-				.build();
 
-		return callAsync(request, connectorServiceStub::getWaypointsByTaskId)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error getting Waypoints: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getWaypointDTOList().getWaypointsList());
-				});
-	}
 }

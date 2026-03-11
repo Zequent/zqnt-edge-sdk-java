@@ -51,7 +51,6 @@ public interface ConnectorService {
 
 	CompletableFuture<OrganizationDTO> getOrganizationById(String id);
 
-	CompletableFuture<List<WaypointDTO>> getWaypointsByTaskId(String id);
 
 
 }
