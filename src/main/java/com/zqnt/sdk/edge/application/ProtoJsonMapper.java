@@ -1,7 +1,7 @@
 package com.zqnt.sdk.edge.application;
 
 import com.google.protobuf.Timestamp;
-import com.zequent.framework.common.proto.*;
+import com.zqnt.utils.common.proto.*;
 import com.zqnt.sdk.edge.adapter.domains.ChangeLensRequest;
 import com.zqnt.sdk.edge.adapter.domains.ChangeZoomRequest;
 import com.zqnt.sdk.edge.adapter.domains.Coordinates;
@@ -12,7 +12,7 @@ import com.zqnt.sdk.edge.adapter.domains.LookAtRequest;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
 import com.zqnt.sdk.edge.adapter.domains.TakeOffRequest;
-import com.zequent.framework.sdks.edge.proto.*;
+import com.zqnt.utils.edge.sdk.proto.*;
 import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
@@ -33,7 +33,7 @@ public class ProtoJsonMapper {
 
     // Edge Request Mappings
 
-    public Coordinates map(com.zequent.framework.common.proto.Coordinates proto) {
+    public Coordinates map(com.zqnt.utils.common.proto.Coordinates proto) {
         if (proto == null)
             return null;
         return new Coordinates(proto.getLatitude(), proto.getLongitude(), proto.getAltitude());

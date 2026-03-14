@@ -1,7 +1,8 @@
 package com.zqnt.sdk.edge.config;
 
-import com.zequent.framework.common.proto.AssetTypeEnum;
-import com.zequent.framework.common.proto.AssetVendor;
+
+import com.zqnt.utils.common.proto.AssetTypeEnum;
+import com.zqnt.utils.common.proto.AssetVendor;
 import lombok.Builder;
 import lombok.Data;
 
