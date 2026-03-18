@@ -8,21 +8,55 @@ import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.missionautonomy.domains.*;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 @Slf4j
 public class ConnectorServiceImpl implements ConnectorService {
 
+	private static final int INITIAL_RETRY_DELAY_SECONDS = 1;
+	private static final int MAX_RETRY_DELAY_SECONDS = 30;
+	private static final int MAX_RETRY_ATTEMPTS = 5;
+
 	private final ProtoJsonMapper protoJsonMapper;
 	private final ConnectorServiceGrpc.ConnectorServiceStub connectorServiceStub;
+	private final ScheduledExecutorService retryScheduler = Executors.newScheduledThreadPool(2);
 
 	public ConnectorServiceImpl(ProtoJsonMapper protoJsonMapper, ConnectorServiceGrpc.ConnectorServiceStub connectorServiceStub) {
 		this.protoJsonMapper = protoJsonMapper;
 		this.connectorServiceStub = connectorServiceStub;
+	}
+
+	private boolean shouldReconnect(Throwable t) {
+		Status status = Status.fromThrowable(t);
+		if (status == null) {
+			return true;
+		}
+		return switch (status.getCode()) {
+			case UNAVAILABLE,
+				DEADLINE_EXCEEDED,
+				RESOURCE_EXHAUSTED,
+				INTERNAL,
+				UNKNOWN -> true;
+			case UNAUTHENTICATED,
+				PERMISSION_DENIED,
+				FAILED_PRECONDITION,
+				UNIMPLEMENTED,
+				DATA_LOSS -> false;
+			default -> true;
+		};
+	}
+
+	private int computeNextDelay(int attempts) {
+		int next = INITIAL_RETRY_DELAY_SECONDS * (1 << Math.min(attempts - 1, 5)); // max 32x base
+		next = Math.min(next, MAX_RETRY_DELAY_SECONDS);
+		int jitter = ThreadLocalRandom.current().nextInt(0, Math.max(1, next / 4));
+		return next + jitter;
 	}
 
 	/**
@@ -56,6 +90,71 @@ public class ConnectorServiceImpl implements ConnectorService {
 		return future;
 	}
 
+	/**
+	 * Helper method to wrap gRPC async calls with automatic retry on transient failures
+	 */
+	private <REQ, RES> CompletableFuture<RES> callAsyncWithRetry(
+			REQ request,
+			BiConsumer<REQ, StreamObserver<RES>> grpcMethod) {
+		return callAsyncWithRetry(request, grpcMethod, 1);
+	}
+
+	private <REQ, RES> CompletableFuture<RES> callAsyncWithRetry(
+			REQ request,
+			BiConsumer<REQ, StreamObserver<RES>> grpcMethod,
+			int attempt) {
+
+		CompletableFuture<RES> future = new CompletableFuture<>();
+
+		grpcMethod.accept(request, new StreamObserver<RES>() {
+			private RES response;
+
+			@Override
+			public void onNext(RES value) {
+				response = value;
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				if (attempt < MAX_RETRY_ATTEMPTS && shouldReconnect(t)) {
+					int nextDelay = computeNextDelay(attempt);
+					log.warn("gRPC call failed (attempt {}/{}). Retrying in {}s: {}", attempt, MAX_RETRY_ATTEMPTS, nextDelay, t.getMessage());
+					retryScheduler.schedule(() ->
+							callAsyncWithRetry(request, grpcMethod, attempt + 1).whenComplete((res, ex) -> {
+								if (ex != null) {
+									future.completeExceptionally(ex);
+								} else {
+									future.complete(res);
+								}
+							}),
+							nextDelay, TimeUnit.SECONDS);
+				} else {
+					log.error("gRPC call failed after {} attempts: {}", attempt, t.getMessage());
+					future.completeExceptionally(t);
+				}
+			}
+
+			@Override
+			public void onCompleted() {
+				future.complete(response);
+			}
+		});
+
+		return future;
+	}
+
+	public void shutdown() {
+		retryScheduler.shutdown();
+		try {
+			if (!retryScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+				retryScheduler.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			retryScheduler.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+	}
+
 	@Override
 	public CompletableFuture<AssetDTO> getAssetBySn(String sn) {
 		var request = ConnectorGetAssetBySnRequest.newBuilder()
@@ -66,7 +165,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.build())
 				.build();
 
-		return callAsync(request, connectorServiceStub::getAssetBySn)
+		return callAsyncWithRetry(request, connectorServiceStub::getAssetBySn)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting Asset from Connector Service");
@@ -86,7 +185,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::getAssetById)
+		return callAsyncWithRetry(request, connectorServiceStub::getAssetById)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting Asset from Connector Service");
@@ -106,7 +205,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.build())
 				.build();
 
-		return callAsync(request, connectorServiceStub::getSubAssetBySn)
+		return callAsyncWithRetry(request, connectorServiceStub::getSubAssetBySn)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting SubAsset from Connector Service");
@@ -128,7 +227,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setAssetDTO(protoJsonMapper.map(assetDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::updateAsset)
+		return callAsyncWithRetry(request, connectorServiceStub::updateAsset)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error updating asset: {}", response.getError());
@@ -149,7 +248,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setAssetDTO(protoJsonMapper.map(assetDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::registerAsset)
+		return callAsyncWithRetry(request, connectorServiceStub::registerAsset)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error registering asset: {}", response.getError());
@@ -168,7 +267,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.build())
 				.build();
 
-		return callAsync(request, connectorServiceStub::deRegisterAsset)
+		return callAsyncWithRetry(request, connectorServiceStub::deRegisterAsset)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error deregistering asset: {}", response.getError());
@@ -188,7 +287,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setMissionId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::getMission)
+		return callAsyncWithRetry(request, connectorServiceStub::getMission)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting Mission: {}", response.getError());
@@ -208,7 +307,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setMissionDTO(protoJsonMapper.map(missionDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::createMission)
+		return callAsyncWithRetry(request, connectorServiceStub::createMission)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error creating mission: {}", response.getError());
@@ -229,7 +328,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setMissionDTO(protoJsonMapper.map(missionDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::updateMission)
+		return callAsyncWithRetry(request, connectorServiceStub::updateMission)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error updating mission: {}", response.getError());
@@ -249,7 +348,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setMissionId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::deleteMission)
+		return callAsyncWithRetry(request, connectorServiceStub::deleteMission)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error deleting mission: {}", response.getError());
@@ -269,7 +368,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setTaskId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::getTask)
+		return callAsyncWithRetry(request, connectorServiceStub::getTask)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting task: {}", response.getError());
@@ -289,7 +388,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setTaskDTO(protoJsonMapper.map(taskDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::createTask)
+		return callAsyncWithRetry(request, connectorServiceStub::createTask)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error creating task: {}", response.getError());
@@ -310,7 +409,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setTaskDTO(protoJsonMapper.map(taskDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::updateTask)
+		return callAsyncWithRetry(request, connectorServiceStub::updateTask)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error updating task: {}", response.getError());
@@ -330,7 +429,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setTaskId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::deleteTask)
+		return callAsyncWithRetry(request, connectorServiceStub::deleteTask)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error deleting task: {}", response.getError());
@@ -350,7 +449,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setTaskId(flightId)
 				.build();
 
-		return callAsync(request, connectorServiceStub::getTaskByFlightId)
+		return callAsyncWithRetry(request, connectorServiceStub::getTaskByFlightId)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting task by flight id: {}", response.getError());
@@ -370,7 +469,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setSchedulerId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::getScheduler)
+		return callAsyncWithRetry(request, connectorServiceStub::getScheduler)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting scheduler: {}", response.getError());
@@ -390,7 +489,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setSchedulerDTO(protoJsonMapper.map(schedulerDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::createScheduler)
+		return callAsyncWithRetry(request, connectorServiceStub::createScheduler)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error creating scheduler: {}", response.getError());
@@ -411,7 +510,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setSchedulerDTO(protoJsonMapper.map(schedulerDTO))
 				.build();
 
-		return callAsync(request, connectorServiceStub::updateScheduler)
+		return callAsyncWithRetry(request, connectorServiceStub::updateScheduler)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error updating scheduler: {}", response.getError());
@@ -431,7 +530,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setSchedulerId(id)
 				.build();
 
-		return callAsync(request, connectorServiceStub::deleteScheduler)
+		return callAsyncWithRetry(request, connectorServiceStub::deleteScheduler)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error deleting scheduler: {}", response.getError());
@@ -450,7 +549,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.build())
 				.build();
 
-		return callAsync(request, connectorServiceStub::getOrganization)
+		return callAsyncWithRetry(request, connectorServiceStub::getOrganization)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting Organization: {}", response.getError());

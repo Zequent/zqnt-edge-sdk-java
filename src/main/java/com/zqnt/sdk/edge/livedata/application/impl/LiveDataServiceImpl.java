@@ -8,12 +8,14 @@ import com.zqnt.sdk.edge.livedata.application.TelemetryMapper;
 import com.zqnt.utils.livedata.proto.LiveDataResponse;
 import com.zqnt.utils.livedata.proto.LiveDataServiceGrpc;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Standard gRPC implementation of LiveDataService that manages persistent gRPC streams
@@ -24,8 +26,13 @@ public class LiveDataServiceImpl implements LiveDataService {
 
 	private final TelemetryMapper telemetryMapper;
 	private final LiveDataServiceGrpc.LiveDataServiceStub liveDataServiceStub;
+	private static final int INITIAL_RECONNECT_DELAY_SECONDS = 2;
+	private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
+	private static final int MAX_RECONNECT_ATTEMPTS = 100;
+
 	private final Map<String, StreamObserver<ProduceTelemetryRequest>> activeStreams = new ConcurrentHashMap<>();
 	private final Map<String, CompletableFuture<Void>> streamFutures = new ConcurrentHashMap<>();
+	private final Map<String, AtomicInteger> reconnectAttempts = new ConcurrentHashMap<>();
 	private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 	private final ScheduledExecutorService reconnectScheduler = Executors.newScheduledThreadPool(1);
 
@@ -159,13 +166,19 @@ public class LiveDataServiceImpl implements LiveDataService {
 
 			@Override
 			public void onError(Throwable t) {
-				if (!shuttingDown.get() && !isShutdownError(t)) {
-					log.error("gRPC stream error for device {}: {}", deviceSn, t.getMessage());
-					activeStreams.remove(deviceSn);
-					streamFutures.remove(deviceSn);
+				log.error("gRPC stream error for device {}: {}", deviceSn, t.getMessage(), t);
+				activeStreams.remove(deviceSn);
+				streamFutures.remove(deviceSn);
+				reconnectAttempts.computeIfAbsent(deviceSn, key -> new AtomicInteger(0));
 
-					// Schedule reconnection
-					scheduleReconnect(deviceSn, 5);
+				if (!shuttingDown.get() && shouldReconnect(t)) {
+					int attempts = reconnectAttempts.get(deviceSn).incrementAndGet();
+					if (attempts <= MAX_RECONNECT_ATTEMPTS) {
+						int delay = computeNextDelay(attempts);
+						scheduleReconnect(deviceSn, delay);
+					} else {
+						log.warn("Max reconnect attempts reached for device {} ({}). Will not retry until manual recovery.", deviceSn, attempts);
+					}
 				}
 				streamFuture.completeExceptionally(t);
 			}
@@ -182,15 +195,31 @@ public class LiveDataServiceImpl implements LiveDataService {
 		return liveDataServiceStub.produceTelemetry(responseObserver);
 	}
 
-	private boolean isShutdownError(Throwable t) {
-		if (shuttingDown.get()) {
+	private boolean shouldReconnect(Throwable t) {
+		Status status = Status.fromThrowable(t);
+		if (status == null) {
 			return true;
 		}
-		String msg = t.getMessage();
-		return msg != null && (
-			msg.contains("shutdown") ||
-			msg.contains("UNAVAILABLE") && msg.contains("Channel")
-		);
+		return switch (status.getCode()) {
+			case UNAVAILABLE,
+				DEADLINE_EXCEEDED,
+				RESOURCE_EXHAUSTED,
+				INTERNAL,
+				UNKNOWN -> true;
+			case UNAUTHENTICATED,
+				PERMISSION_DENIED,
+				FAILED_PRECONDITION,
+				UNIMPLEMENTED,
+				DATA_LOSS -> false;
+			default -> true;
+		};
+	}
+
+	private int computeNextDelay(int attempts) {
+		int next = INITIAL_RECONNECT_DELAY_SECONDS * (1 << Math.min(attempts - 1, 6)); // max 128x base
+		next = Math.min(next, MAX_RECONNECT_DELAY_SECONDS);
+		int jitter = ThreadLocalRandom.current().nextInt(0, Math.max(1, next / 4));
+		return next + jitter;
 	}
 
 	private void scheduleReconnect(String deviceSn, int delaySeconds) {
@@ -198,21 +227,29 @@ public class LiveDataServiceImpl implements LiveDataService {
 			return;
 		}
 
-		log.info("Scheduling reconnection for device {} in {} seconds", deviceSn, delaySeconds);
+		log.info("Scheduling reconnection for device {} in {} seconds (attempt {})", deviceSn, delaySeconds,
+									reconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(0)).get());
 
 		reconnectScheduler.schedule(() -> {
-			if (!shuttingDown.get() && !activeStreams.containsKey(deviceSn)) {
-				log.info("Attempting to reconnect gRPC stream for device {}", deviceSn);
-				try {
-					CompletableFuture<Void> newFuture = new CompletableFuture<>();
-					StreamObserver<ProduceTelemetryRequest> newStream = createGrpcStream(deviceSn, newFuture);
-					activeStreams.put(deviceSn, newStream);
-					streamFutures.put(deviceSn, newFuture);
-				} catch (Exception e) {
-					log.error("Failed to reconnect stream for device {}: {}", deviceSn, e.getMessage());
-					// Retry with exponential backoff
-					int nextDelay = Math.min(delaySeconds * 2, 60);
+			if (shuttingDown.get() || activeStreams.containsKey(deviceSn)) {
+				return;
+			}
+
+			log.info("Attempting to reconnect gRPC stream for device {}", deviceSn);
+			try {
+				CompletableFuture<Void> newFuture = new CompletableFuture<>();
+				StreamObserver<ProduceTelemetryRequest> newStream = createGrpcStream(deviceSn, newFuture);
+				activeStreams.put(deviceSn, newStream);
+				streamFutures.put(deviceSn, newFuture);
+				reconnectAttempts.remove(deviceSn);
+			} catch (Exception e) {
+				int attempts = reconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(1)).get();
+				if (attempts < MAX_RECONNECT_ATTEMPTS) {
+					int nextDelay = computeNextDelay(attempts + 1);
+					log.warn("Failed to reconnect stream for device {}: {}. retry in {}s", deviceSn, e.getMessage(), nextDelay, e);
 					scheduleReconnect(deviceSn, nextDelay);
+				} else {
+					log.error("Exhausted reconnect attempts for device {} after {} tries", deviceSn, attempts, e);
 				}
 			}
 		}, delaySeconds, TimeUnit.SECONDS);
