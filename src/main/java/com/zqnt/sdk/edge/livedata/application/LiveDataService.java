@@ -1,7 +1,7 @@
 package com.zqnt.sdk.edge.livedata.application;
 
-import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
+import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 
 import java.util.concurrent.CompletableFuture;
 

@@ -1,9 +1,9 @@
 package com.zqnt.sdk.edge.connector.application.impl;
 
-import com.zequent.framework.common.proto.RequestBase;
+import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
 import com.zqnt.sdk.edge.connector.application.ConnectorService;
-import com.zequent.framework.services.connector.proto.*;
+import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.core.ProtobufHelpers;

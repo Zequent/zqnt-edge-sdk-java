@@ -3,10 +3,11 @@ package com.zqnt.sdk.edge.livedata.application.impl;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zqnt.sdk.edge.livedata.application.LiveDataService;
 import com.zqnt.sdk.edge.livedata.application.TelemetryMapper;
-import com.zequent.framework.services.livedata.proto.LiveDataResponse;
-import com.zequent.framework.services.livedata.proto.LiveDataServiceGrpc;
-import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
 
+
+import com.zqnt.utils.livedata.proto.LiveDataResponse;
+import com.zqnt.utils.livedata.proto.LiveDataServiceGrpc;
+import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 

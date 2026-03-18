@@ -1,15 +1,17 @@
 package com.zqnt.sdk.edge.adapter.grpc;
 
-import com.zequent.framework.common.proto.ErrorCodes;
-import com.zequent.framework.common.proto.GlobalErrorMessage;
-import com.zequent.framework.common.proto.RequestBase;
+
 import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
 import com.zqnt.sdk.edge.adapter.domains.CommandResult;
 import com.zqnt.sdk.edge.adapter.domains.LiveStreamStopRequest;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
-import com.zequent.framework.sdks.edge.proto.*;
+import com.zqnt.utils.common.proto.ErrorCode;
+import com.zqnt.utils.common.proto.GlobalErrorMessage;
+import com.zqnt.utils.common.proto.RequestBase;
+import com.zqnt.utils.edge.sdk.proto.*;
 import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
@@ -429,7 +431,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 			builder.setHasErrors(true)
 					.setError(GlobalErrorMessage.newBuilder()
 							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCodes.CLIENT_ERROR)
+							.setErrorCode(ErrorCode.CLIENT_ERROR)
 							.setTimestamp(ProtobufHelpers.now())
 							.build());
 
@@ -444,7 +446,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 			builder.setHasErrors(true)
 					.setError(GlobalErrorMessage.newBuilder()
 							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCodes.ASSET_ERROR)
+							.setErrorCode(ErrorCode.ASSET_ERROR)
 							.setTimestamp(ProtobufHelpers.now())
 							.build());
 		}
@@ -459,7 +461,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 		log.error("Error processing command for SN: %s, TID: %s", base.getSn(), base.getTid());
 
 		// Determine error code based on exception type
-		ErrorCodes errorCode = determineErrorCode(error);
+		ErrorCode errorCode = determineErrorCode(error);
 
 		return EdgeResponse.newBuilder()
 				.setHasErrors(true)
@@ -474,16 +476,16 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				.build();
 	}
 
-	private ErrorCodes determineErrorCode(Throwable error) {
+	private ErrorCode determineErrorCode(Throwable error) {
 		// You can customize this based on exception types
 		if (error instanceof IllegalArgumentException) {
-			return ErrorCodes.CLIENT_ERROR;
+			return ErrorCode.CLIENT_ERROR;
 		} else if (error instanceof UnsupportedOperationException) {
-			return ErrorCodes.CLIENT_ERROR;
+			return ErrorCode.CLIENT_ERROR;
 		} else if (error instanceof java.util.concurrent.TimeoutException) {
-			return ErrorCodes.SYSTEM_ERROR;
+			return ErrorCode.SYSTEM_ERROR;
 		}
-		return ErrorCodes.SYSTEM_ERROR;
+		return ErrorCode.SYSTEM_ERROR;
 	}
 
 	/**

@@ -1,14 +1,14 @@
 package com.zqnt.sdk.edge.livedata.application;
 
 import com.google.protobuf.Timestamp;
-import com.zequent.framework.common.proto.RequestBase;
-import com.zequent.framework.services.livedata.proto.AssetTelemetry;
-import com.zequent.framework.services.livedata.proto.ProduceTelemetryRequest;
-import com.zequent.framework.services.livedata.proto.SubAssetTelemetry;
+import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
+import com.zqnt.utils.livedata.proto.AssetTelemetry;
+import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
+import com.zqnt.utils.livedata.proto.SubAssetTelemetry;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -158,10 +158,12 @@ public class TelemetryMapper {
 
         // Nested objects
 
+
+        //TODO handle mapping
         // PositionState (contains gpsNumber, rtkNumber, quality)
         if (telemetryData.getPositionState() != null) {
-            com.zequent.framework.services.livedata.proto.AssetTelemetry.PositionState.Builder posStateBuilder =
-                    com.zequent.framework.services.livedata.proto.AssetTelemetry.PositionState.newBuilder();
+            com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.Builder posStateBuilder =
+                    com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.newBuilder();
 
             if (telemetryData.getPositionState().getGpsNumber() != null) {
                 posStateBuilder.setGpsNumber(telemetryData.getPositionState().getGpsNumber());

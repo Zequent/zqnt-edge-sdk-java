@@ -1,6 +1,6 @@
 package com.zqnt.sdk.edge.adapter.domains;
 
-import com.zequent.framework.common.proto.AssetTypeEnum;
+import com.zqnt.utils.common.proto.AssetTypeEnum;
 import lombok.*;
 
 import java.util.Collections;
