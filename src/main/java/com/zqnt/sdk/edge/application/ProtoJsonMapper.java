@@ -361,8 +361,8 @@ public class ProtoJsonMapper {
         if (proto.hasCreatedAt()) {
             builder.createdAt(toLocalDateTime(proto.getCreatedAt()));
         }
-        if (proto.hasUpdatedAt()) {
-            builder.modifiedAt(toLocalDateTime(proto.getUpdatedAt()));
+        if (proto.hasModifiedAt()) {
+            builder.modifiedAt(toLocalDateTime(proto.getModifiedAt()));
         }
         if (proto.hasUpdatedUser()) {
             builder.modifiedFrom(proto.getUpdatedUser());
