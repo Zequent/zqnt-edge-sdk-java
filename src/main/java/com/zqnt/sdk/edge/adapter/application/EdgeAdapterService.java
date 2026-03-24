@@ -1,19 +1,8 @@
 package com.zqnt.sdk.edge.adapter.application;
 
-import com.zqnt.sdk.edge.adapter.domains.ChangeLensRequest;
-import com.zqnt.sdk.edge.adapter.domains.ChangeZoomRequest;
-import com.zqnt.sdk.edge.adapter.domains.CommandResult;
-import com.zqnt.sdk.edge.adapter.domains.CurrentCapabilities;
-import com.zqnt.sdk.edge.adapter.domains.GoToRequest;
-import com.zqnt.sdk.edge.adapter.domains.LiveStreamStartRequest;
-import com.zqnt.sdk.edge.adapter.domains.LiveStreamStopRequest;
-import com.zqnt.sdk.edge.adapter.domains.LookAtRequest;
-import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
-import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
-import com.zqnt.sdk.edge.adapter.domains.TakeOffRequest;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
+import com.zqnt.sdk.edge.adapter.domains.*;
 
+import java.util.concurrent.CompletableFuture;
 
 public interface EdgeAdapterService {
 
