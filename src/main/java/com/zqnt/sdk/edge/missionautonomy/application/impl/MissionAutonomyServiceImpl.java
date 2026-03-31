@@ -141,6 +141,18 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 		return future;
 	}
 
+	public void shutdown() {
+		retryScheduler.shutdown();
+		try {
+			if (!retryScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+				retryScheduler.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			retryScheduler.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+	}
+
 	@Override
 	public CompletableFuture<MissionDTO> createMission(CreateMissionRequest createMissionRequest) {
 		return callAsyncWithRetry(createMissionRequest, missionAutonomyServiceStub::createMission)
