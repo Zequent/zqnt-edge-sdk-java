@@ -153,6 +153,9 @@ public class ProtoJsonMapper {
         if (proto.hasExternalDeviceType()) {
             builder.externalDeviceType(proto.getExternalDeviceType());
         }
+        if (proto.hasStreamUrlPredefined()){
+            builder.streamUrlPredefined(proto.getStreamUrlPredefined());
+        }
         if (proto.hasExternalDeviceSubType()) {
             builder.externalDeviceSubType(proto.getExternalDeviceSubType());
         }
@@ -198,6 +201,9 @@ public class ProtoJsonMapper {
         }
         if (dto.getLiveStreamServer() != null) {
             builder.setLiveStreamServer(dto.getLiveStreamServer());
+        }
+        if (dto.getStreamUrlPredefined() != null) {
+            builder.setStreamUrlPredefined(dto.getStreamUrlPredefined());
         }
         if (dto.getExternalDeviceType() != null) {
             builder.setExternalDeviceType(dto.getExternalDeviceType());
