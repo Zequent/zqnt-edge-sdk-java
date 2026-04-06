@@ -1,29 +1,21 @@
 package com.zqnt.sdk.edge.application;
 
 import com.google.protobuf.Timestamp;
-import com.zqnt.utils.common.proto.*;
-import com.zqnt.sdk.edge.adapter.domains.ChangeLensRequest;
-import com.zqnt.sdk.edge.adapter.domains.ChangeZoomRequest;
+import com.zqnt.sdk.edge.adapter.domains.*;
 import com.zqnt.sdk.edge.adapter.domains.Coordinates;
-import com.zqnt.sdk.edge.adapter.domains.GoToRequest;
-import com.zqnt.sdk.edge.adapter.domains.LiveStreamStartRequest;
-import com.zqnt.sdk.edge.adapter.domains.LiveStreamStopRequest;
-import com.zqnt.sdk.edge.adapter.domains.LookAtRequest;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
-import com.zqnt.sdk.edge.adapter.domains.TakeOffRequest;
-import com.zqnt.utils.edge.sdk.proto.*;
 import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
+import com.zqnt.utils.common.proto.*;
+import com.zqnt.utils.edge.sdk.proto.*;
 import com.zqnt.utils.missionautonomy.domains.*;
 import com.zqnt.utils.missionautonomy.domains.config.TaskConfigTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -161,6 +153,9 @@ public class ProtoJsonMapper {
         if (proto.hasExternalDeviceType()) {
             builder.externalDeviceType(proto.getExternalDeviceType());
         }
+        if (proto.hasStreamUrlPredefined()){
+            builder.streamUrlPredefined(proto.getStreamUrlPredefined());
+        }
         if (proto.hasExternalDeviceSubType()) {
             builder.externalDeviceSubType(proto.getExternalDeviceSubType());
         }
@@ -206,6 +201,9 @@ public class ProtoJsonMapper {
         }
         if (dto.getLiveStreamServer() != null) {
             builder.setLiveStreamServer(dto.getLiveStreamServer());
+        }
+        if (dto.getStreamUrlPredefined() != null) {
+            builder.setStreamUrlPredefined(dto.getStreamUrlPredefined());
         }
         if (dto.getExternalDeviceType() != null) {
             builder.setExternalDeviceType(dto.getExternalDeviceType());

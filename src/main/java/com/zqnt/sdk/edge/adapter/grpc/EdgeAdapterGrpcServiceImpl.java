@@ -15,8 +15,7 @@ import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.List;
+
 
 @Slf4j
 public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapterServiceImplBase {
@@ -111,8 +110,6 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	public StreamObserver<EdgeManualControlInputRequest> manualControlInput(StreamObserver<EdgeResponse> responseObserver) {
 		log.info("ManualControlInput stream started");
 
-		List<ManualControlInput> inputs = new ArrayList<>();
-
 		return new StreamObserver<EdgeManualControlInputRequest>() {
 			private String sn;
 
@@ -124,23 +121,26 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				}
 				edgeAdapterService.manualControlInput(input)
 						.exceptionally(throwable -> {
-							log.error("Failed to process input", throwable);
+							log.error("Failed to process input for SN: {}", this.sn, throwable);
 							return null;
 						});
 			}
 
 			public void onCompleted() {
 				log.info("Manual control input stream completed for SN: {}", sn);
+				// Must send a response before completing so the client's responseFuture resolves
+				String tid = java.util.UUID.randomUUID().toString();
+				RequestBase base = createErrorBase(sn != null ? sn : "", tid);
+				responseObserver.onNext(toEdgeResponse(base,
+						CommandResult.success("Manual control input session completed", tid, sn)));
 				responseObserver.onCompleted();
 			}
 
 			@Override
 			public void onError(Throwable t) {
-				log.error("Manual control input stream error", t);
+				log.error("Manual control input stream error for SN: {}", sn, t);
 				responseObserver.onError(t);
 			}
-
-
 		};
 	}
 
@@ -458,7 +458,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	 * Convert exception to EdgeResponse (global error handler)
 	 */
 	protected EdgeResponse toErrorResponse(RequestBase base, Throwable error) {
-		log.error("Error processing command for SN: %s, TID: %s", base.getSn(), base.getTid());
+		log.error("Error processing command for SN: {}, TID: {}", base.getSn(), base.getTid());
 
 		// Determine error code based on exception type
 		ErrorCode errorCode = determineErrorCode(error);
