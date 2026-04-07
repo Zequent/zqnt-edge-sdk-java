@@ -161,6 +161,22 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
+	public void takePhoto(EdgeTakePhotoRequest request, StreamObserver<EdgeResponse> responseObserver) {
+		log.info("TakePhoto for Edge SN: {}", request.getBase().getSn());
+		var takeOffRequest = protoJsonMapper.map(request);
+		edgeAdapterService.takePhoto(takeOffRequest)
+				.thenAccept(result -> {
+					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
+					responseObserver.onCompleted();
+				})
+				.exceptionally(throwable -> {
+					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
+					responseObserver.onCompleted();
+					return null;
+				});
+	}
+
+	@Override
 	public void enableGimbalTracking(EdgeEnableGimbalTrackingRequest request, StreamObserver<EdgeResponse> responseObserver) {
 		log.info("EnableGimbalTracking for Edge SN: {}", request.getBase().getSn());
 		edgeAdapterService.enableGimbalTracking(request.getBase().getSn(), request.getEnabled())

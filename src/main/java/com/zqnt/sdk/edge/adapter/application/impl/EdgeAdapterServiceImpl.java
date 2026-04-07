@@ -88,10 +88,6 @@ public class EdgeAdapterServiceImpl implements EdgeAdapterService {
 	}
 
 	/**
-	 * Look at using configured serial number
-	 */
-
-	/**
 	 * Get capabilities using configured serial number
 	 */
 	public CompletableFuture<CurrentCapabilities> getCapabilities() {
