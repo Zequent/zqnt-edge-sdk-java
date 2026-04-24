@@ -114,6 +114,14 @@ public class ProtoJsonMapper {
                 .build();
     }
 
+    public TakePhotoRequest map(EdgeTakePhotoRequest request) {
+        if (request == null)
+            return null;
+        return TakePhotoRequest.builder()
+                .sn(request.getBase().getSn())
+                .build();
+    }
+
     public ManualControlInput map(EdgeManualControlInputRequest request) {
         if (request == null)
             return null;
