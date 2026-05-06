@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.zqnt.sdk</groupId>
-    <artifactId>edge-sdk</artifactId>
-    <version>1.0.0</version>
+    <artifactId>edge-java-sdk</artifactId>
+    <version>1.0.1</version>
     <name>Zequent Java Edge SDK</name>
     <description>A Java SDK for Zequent's Edge services, built on Quarkus and gRPC, designed for seamless integration
         with Java applications.
@@ -53,7 +53,7 @@
         <repository>
             <id>zqnt-utils-repo</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/Zequent/zqnt-utils</url>
+            <url>https://maven.pkg.github.com/Zequent/zqnt-utils-java</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
@@ -67,8 +67,8 @@
     <dependencies>
         <dependency>
             <groupId>com.zqnt</groupId>
-            <artifactId>zqnt-utils</artifactId>
-            <version>1.0.0</version>
+            <artifactId>zqnt-utils-java</artifactId>
+            <version>1.0.1</version>
         </dependency>
         <!-- gRPC dependencies -->
         <dependency>

@@ -148,6 +148,18 @@ public interface EdgeAdapterService {
 	}
 
 	/**
+	 * Take a photo (if supported)
+	 * @param takePhotoRequest
+	 * @return
+	 */
+	default CompletableFuture<CommandResult> takePhoto (TakePhotoRequest takePhotoRequest) {
+		return CompletableFuture.completedFuture(
+				CommandResult.notImplemented("takePhoto is not implemented for this asset", takePhotoRequest.getSn())
+		);
+
+	}
+
+	/**
 	 * Change camera lens
 	 * Default: Returns NOT_IMPLEMENTED error
 	 */
