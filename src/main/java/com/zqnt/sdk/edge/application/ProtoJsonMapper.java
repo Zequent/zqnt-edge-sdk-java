@@ -142,6 +142,11 @@ public class ProtoJsonMapper {
             return null;
 
         SubAssetDTO.SubAssetDTOBuilder builder = SubAssetDTO.builder();
+
+        if (!proto.getId().isEmpty()) {
+            builder.id(UUID.fromString(proto.getId()));
+        }
+
         builder.sn(proto.getSn());
         builder.name(proto.getName());
         builder.type(proto.getType());
@@ -232,6 +237,10 @@ public class ProtoJsonMapper {
 
         AssetDTO.AssetDTOBuilder builder = AssetDTO.builder();
 
+        if (!proto.getId().isEmpty()) {
+            builder.id(UUID.fromString(proto.getId()));
+        }
+
         builder.sn(proto.getSn());
 
         builder.name(proto.getName());
@@ -259,10 +268,12 @@ public class ProtoJsonMapper {
         if (proto.hasExternalDeviceSubType()) {
             builder.externalDeviceSubType(proto.getExternalDeviceSubType());
         }
-        if (proto.hasSubAssetDTO()) {
-            builder.subAsset(map(proto.getSubAssetDTO()));
+        if (proto.hasSubAssetDto()) {
+            builder.subAsset(map(proto.getSubAssetDto()));
         }
-        builder.organization(UUID.fromString(proto.getOrganization()));
+        if (!proto.getOrganization().isEmpty()) {
+            builder.organization(UUID.fromString(proto.getOrganization()));
+        }
 
         return builder.build();
     }
@@ -311,7 +322,7 @@ public class ProtoJsonMapper {
             builder.setExternalDeviceSubType(dto.getExternalDeviceSubType());
         }
         if (dto.getSubAsset() != null) {
-            builder.setSubAssetDTO(map(dto.getSubAsset()));
+            builder.setSubAssetDto(map(dto.getSubAsset()));
         }
         if (dto.getOrganization() != null) {
             builder.setOrganization(dto.getOrganization().toString());
