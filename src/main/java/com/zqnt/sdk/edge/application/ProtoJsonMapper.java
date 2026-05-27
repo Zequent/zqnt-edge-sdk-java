@@ -38,6 +38,7 @@ public class ProtoJsonMapper {
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
                 .coordinates(map(request.getRequest()))
+                .externalId(request.getExternalId())
                 .build();
     }
 
@@ -48,6 +49,7 @@ public class ProtoJsonMapper {
                 .sn(request.getBase().getSn())
                 .tid(request.getBase().getTid())
                 .coordinates(map(request.getRequest()))
+                .externalId(request.getExternalId())
                 .build();
     }
 

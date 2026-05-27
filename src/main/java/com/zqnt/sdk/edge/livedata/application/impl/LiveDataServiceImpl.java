@@ -1,12 +1,17 @@
 package com.zqnt.sdk.edge.livedata.application.impl;
 
+import com.zqnt.sdk.edge.adapter.domains.DetectionRequestData;
+import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
+import com.zqnt.sdk.edge.livedata.application.DetectionMapper;
 import com.zqnt.sdk.edge.livedata.application.LiveDataService;
+import com.zqnt.sdk.edge.livedata.application.NotificationMapper;
 import com.zqnt.sdk.edge.livedata.application.TelemetryMapper;
 
-
+import com.zqnt.utils.common.proto.DetectionBatch;
 import com.zqnt.utils.livedata.proto.LiveDataResponse;
 import com.zqnt.utils.livedata.proto.LiveDataServiceGrpc;
+import com.zqnt.utils.livedata.proto.ProduceNotificationRequest;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -25,20 +30,38 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class LiveDataServiceImpl implements LiveDataService {
 
 	private final TelemetryMapper telemetryMapper;
+	private final DetectionMapper detectionMapper;
+	private final NotificationMapper notificationMapper;
 	private final LiveDataServiceGrpc.LiveDataServiceStub liveDataServiceStub;
 	private static final int INITIAL_RECONNECT_DELAY_SECONDS = 2;
 	private static final int MAX_RECONNECT_DELAY_SECONDS = 60;
 	private static final int MAX_RECONNECT_ATTEMPTS = 100;
 
+	// Telemetry streams
 	private final Map<String, StreamObserver<ProduceTelemetryRequest>> activeStreams = new ConcurrentHashMap<>();
 	private final Map<String, CompletableFuture<Void>> streamFutures = new ConcurrentHashMap<>();
 	private final Map<String, AtomicInteger> reconnectAttempts = new ConcurrentHashMap<>();
+
+	// Detection streams
+	private final Map<String, StreamObserver<DetectionBatch>> activeDetectionStreams = new ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<Void>> detectionStreamFutures = new ConcurrentHashMap<>();
+	private final Map<String, AtomicInteger> detectionReconnectAttempts = new ConcurrentHashMap<>();
+
+	// Notification streams
+	private final Map<String, StreamObserver<ProduceNotificationRequest>> activeNotificationStreams = new ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<Void>> notificationStreamFutures = new ConcurrentHashMap<>();
+	private final Map<String, AtomicInteger> notificationReconnectAttempts = new ConcurrentHashMap<>();
+
 	private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 	private final ScheduledExecutorService reconnectScheduler = Executors.newScheduledThreadPool(1);
 
 	public LiveDataServiceImpl(TelemetryMapper telemetryMapper,
+							   DetectionMapper detectionMapper,
+							   NotificationMapper notificationMapper,
 							   LiveDataServiceGrpc.LiveDataServiceStub liveDataServiceStub) {
 		this.telemetryMapper = telemetryMapper;
+		this.detectionMapper = detectionMapper;
+		this.notificationMapper = notificationMapper;
 		this.liveDataServiceStub = liveDataServiceStub;
 	}
 
@@ -59,6 +82,286 @@ public class LiveDataServiceImpl implements LiveDataService {
 			Thread.currentThread().interrupt();
 		}
 	}
+
+	// -------------------------------------------------------------------------
+	// Detection
+	// -------------------------------------------------------------------------
+
+	@Override
+	public CompletableFuture<Void> produceDetectionData(DetectionRequestData requestData) {
+		if (requestData == null) {
+			return CompletableFuture.completedFuture(null);
+		}
+		var request = detectionMapper.map(requestData);
+		return produceDetection(requestData.getSn(), request);
+	}
+
+	@Override
+	public CompletableFuture<Void> produceDetection(String deviceSn, DetectionBatch detectionBatch) {
+		if (shuttingDown.get()) {
+			log.warn("Cannot produce detection for device {} - service is shutting down", deviceSn);
+			return CompletableFuture.completedFuture(null);
+		}
+
+		StreamObserver<DetectionBatch> stream = getOrCreateDetectionStream(deviceSn);
+		if (stream == null) {
+			return CompletableFuture.completedFuture(null);
+		}
+
+		try {
+			stream.onNext(detectionBatch);
+			return CompletableFuture.completedFuture(null);
+		} catch (Exception e) {
+			log.error("Error sending detection for device {}: {}", deviceSn, e.getMessage());
+			activeDetectionStreams.remove(deviceSn);
+			return CompletableFuture.failedFuture(e);
+		}
+	}
+
+	@Override
+	public CompletableFuture<Void> closeDetectionStream(String deviceSn) {
+		return CompletableFuture.runAsync(() -> {
+			StreamObserver<DetectionBatch> stream = activeDetectionStreams.remove(deviceSn);
+			CompletableFuture<Void> future = detectionStreamFutures.remove(deviceSn);
+
+			if (stream != null) {
+				try {
+					stream.onCompleted();
+					log.info("Closed detection stream for device: {}", deviceSn);
+				} catch (Exception e) {
+					log.warn("Error closing detection stream for device {}: {}", deviceSn, e.getMessage());
+				}
+			}
+
+			if (future != null) {
+				future.complete(null);
+			}
+		});
+	}
+
+	private StreamObserver<DetectionBatch> getOrCreateDetectionStream(String deviceSn) {
+		if (shuttingDown.get()) {
+			log.warn("Cannot create detection stream for device {} - service is shutting down", deviceSn);
+			return null;
+		}
+
+		return activeDetectionStreams.computeIfAbsent(deviceSn, sn -> {
+			CompletableFuture<Void> streamFuture = new CompletableFuture<>();
+			detectionStreamFutures.put(sn, streamFuture);
+			return createDetectionGrpcStream(sn, streamFuture);
+		});
+	}
+
+	private StreamObserver<DetectionBatch> createDetectionGrpcStream(
+			String deviceSn,
+			CompletableFuture<Void> streamFuture) {
+
+		log.info("Creating gRPC detection stream for device {}", deviceSn);
+
+		StreamObserver<LiveDataResponse> responseObserver = new StreamObserver<>() {
+			@Override
+			public void onNext(LiveDataResponse response) {
+				log.debug("Detection response received for device {}", deviceSn);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				log.error("gRPC detection stream error for device {}: {}", deviceSn, t.getMessage(), t);
+				activeDetectionStreams.remove(deviceSn);
+				detectionStreamFutures.remove(deviceSn);
+				detectionReconnectAttempts.computeIfAbsent(deviceSn, key -> new AtomicInteger(0));
+
+				if (!shuttingDown.get() && shouldReconnect(t)) {
+					int attempts = detectionReconnectAttempts.get(deviceSn).incrementAndGet();
+					if (attempts <= MAX_RECONNECT_ATTEMPTS) {
+						scheduleDetectionReconnect(deviceSn, computeNextDelay(attempts));
+					} else {
+						log.warn("Max detection reconnect attempts reached for device {}. Will not retry until manual recovery.", deviceSn);
+					}
+				}
+				streamFuture.completeExceptionally(t);
+			}
+
+			@Override
+			public void onCompleted() {
+				log.info("gRPC detection stream completed for device {}", deviceSn);
+				activeDetectionStreams.remove(deviceSn);
+				detectionStreamFutures.remove(deviceSn);
+				streamFuture.complete(null);
+			}
+		};
+
+		return liveDataServiceStub.produceDetection(responseObserver);
+	}
+
+	private void scheduleDetectionReconnect(String deviceSn, int delaySeconds) {
+		if (shuttingDown.get()) return;
+
+		log.info("Scheduling detection reconnection for device {} in {} seconds (attempt {})",
+				deviceSn, delaySeconds, detectionReconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(0)).get());
+
+		reconnectScheduler.schedule(() -> {
+			if (shuttingDown.get() || activeDetectionStreams.containsKey(deviceSn)) return;
+
+			log.info("Attempting to reconnect gRPC detection stream for device {}", deviceSn);
+			try {
+				CompletableFuture<Void> newFuture = new CompletableFuture<>();
+				StreamObserver<DetectionBatch> newStream = createDetectionGrpcStream(deviceSn, newFuture);
+				activeDetectionStreams.put(deviceSn, newStream);
+				detectionStreamFutures.put(deviceSn, newFuture);
+				detectionReconnectAttempts.remove(deviceSn);
+			} catch (Exception e) {
+				int attempts = detectionReconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(1)).get();
+				if (attempts < MAX_RECONNECT_ATTEMPTS) {
+					scheduleDetectionReconnect(deviceSn, computeNextDelay(attempts + 1));
+				} else {
+					log.error("Exhausted detection reconnect attempts for device {} after {} tries", deviceSn, attempts, e);
+				}
+			}
+		}, delaySeconds, TimeUnit.SECONDS);
+	}
+
+	// -------------------------------------------------------------------------
+	// Notification
+	// -------------------------------------------------------------------------
+
+	@Override
+	public CompletableFuture<Void> produceNotificationData(NotificationRequestData requestData) {
+		if (requestData == null) {
+			return CompletableFuture.completedFuture(null);
+		}
+		var request = notificationMapper.map(requestData);
+		return produceNotification(requestData.getSn(), request);
+	}
+
+	@Override
+	public CompletableFuture<Void> produceNotification(String deviceSn, ProduceNotificationRequest notificationRequest) {
+		if (shuttingDown.get()) {
+			log.warn("Cannot produce notification for device {} - service is shutting down", deviceSn);
+			return CompletableFuture.completedFuture(null);
+		}
+
+		StreamObserver<ProduceNotificationRequest> stream = getOrCreateNotificationStream(deviceSn);
+		if (stream == null) {
+			return CompletableFuture.completedFuture(null);
+		}
+
+		try {
+			stream.onNext(notificationRequest);
+			return CompletableFuture.completedFuture(null);
+		} catch (Exception e) {
+			log.error("Error sending notification for device {}: {}", deviceSn, e.getMessage());
+			activeNotificationStreams.remove(deviceSn);
+			return CompletableFuture.failedFuture(e);
+		}
+	}
+
+	@Override
+	public CompletableFuture<Void> closeNotificationStream(String deviceSn) {
+		return CompletableFuture.runAsync(() -> {
+			StreamObserver<ProduceNotificationRequest> stream = activeNotificationStreams.remove(deviceSn);
+			CompletableFuture<Void> future = notificationStreamFutures.remove(deviceSn);
+
+			if (stream != null) {
+				try {
+					stream.onCompleted();
+					log.info("Closed notification stream for device: {}", deviceSn);
+				} catch (Exception e) {
+					log.warn("Error closing notification stream for device {}: {}", deviceSn, e.getMessage());
+				}
+			}
+
+			if (future != null) {
+				future.complete(null);
+			}
+		});
+	}
+
+	private StreamObserver<ProduceNotificationRequest> getOrCreateNotificationStream(String deviceSn) {
+		if (shuttingDown.get()) {
+			log.warn("Cannot create notification stream for device {} - service is shutting down", deviceSn);
+			return null;
+		}
+
+		return activeNotificationStreams.computeIfAbsent(deviceSn, sn -> {
+			CompletableFuture<Void> streamFuture = new CompletableFuture<>();
+			notificationStreamFutures.put(sn, streamFuture);
+			return createNotificationGrpcStream(sn, streamFuture);
+		});
+	}
+
+	private StreamObserver<ProduceNotificationRequest> createNotificationGrpcStream(
+			String deviceSn,
+			CompletableFuture<Void> streamFuture) {
+
+		log.info("Creating gRPC notification stream for device {}", deviceSn);
+
+		StreamObserver<LiveDataResponse> responseObserver = new StreamObserver<>() {
+			@Override
+			public void onNext(LiveDataResponse response) {
+				log.debug("Notification response received for device {}", deviceSn);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				log.error("gRPC notification stream error for device {}: {}", deviceSn, t.getMessage(), t);
+				activeNotificationStreams.remove(deviceSn);
+				notificationStreamFutures.remove(deviceSn);
+				notificationReconnectAttempts.computeIfAbsent(deviceSn, key -> new AtomicInteger(0));
+
+				if (!shuttingDown.get() && shouldReconnect(t)) {
+					int attempts = notificationReconnectAttempts.get(deviceSn).incrementAndGet();
+					if (attempts <= MAX_RECONNECT_ATTEMPTS) {
+						scheduleNotificationReconnect(deviceSn, computeNextDelay(attempts));
+					} else {
+						log.warn("Max notification reconnect attempts reached for device {}. Will not retry until manual recovery.", deviceSn);
+					}
+				}
+				streamFuture.completeExceptionally(t);
+			}
+
+			@Override
+			public void onCompleted() {
+				log.info("gRPC notification stream completed for device {}", deviceSn);
+				activeNotificationStreams.remove(deviceSn);
+				notificationStreamFutures.remove(deviceSn);
+				streamFuture.complete(null);
+			}
+		};
+
+		return liveDataServiceStub.produceNotification(responseObserver);
+	}
+
+	private void scheduleNotificationReconnect(String deviceSn, int delaySeconds) {
+		if (shuttingDown.get()) return;
+
+		log.info("Scheduling notification reconnection for device {} in {} seconds (attempt {})",
+				deviceSn, delaySeconds, notificationReconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(0)).get());
+
+		reconnectScheduler.schedule(() -> {
+			if (shuttingDown.get() || activeNotificationStreams.containsKey(deviceSn)) return;
+
+			log.info("Attempting to reconnect gRPC notification stream for device {}", deviceSn);
+			try {
+				CompletableFuture<Void> newFuture = new CompletableFuture<>();
+				StreamObserver<ProduceNotificationRequest> newStream = createNotificationGrpcStream(deviceSn, newFuture);
+				activeNotificationStreams.put(deviceSn, newStream);
+				notificationStreamFutures.put(deviceSn, newFuture);
+				notificationReconnectAttempts.remove(deviceSn);
+			} catch (Exception e) {
+				int attempts = notificationReconnectAttempts.getOrDefault(deviceSn, new AtomicInteger(1)).get();
+				if (attempts < MAX_RECONNECT_ATTEMPTS) {
+					scheduleNotificationReconnect(deviceSn, computeNextDelay(attempts + 1));
+				} else {
+					log.error("Exhausted notification reconnect attempts for device {} after {} tries", deviceSn, attempts, e);
+				}
+			}
+		}, delaySeconds, TimeUnit.SECONDS);
+	}
+
+	// -------------------------------------------------------------------------
+	// Telemetry
+	// -------------------------------------------------------------------------
 
 	@Override
 	public CompletableFuture<Void> produceTelemetryData(TelemetryRequestData requestData) {
@@ -120,22 +423,46 @@ public class LiveDataServiceImpl implements LiveDataService {
 	@Override
 	public CompletableFuture<Void> closeAllStreams() {
 		return CompletableFuture.runAsync(() -> {
-			log.info("Closing all telemetry streams ({} active)", activeStreams.size());
+			log.info("Closing all streams (telemetry: {}, detection: {}, notification: {})",
+					activeStreams.size(), activeDetectionStreams.size(), activeNotificationStreams.size());
 
 			activeStreams.forEach((deviceSn, stream) -> {
 				try {
 					stream.onCompleted();
-					log.debug("Completed stream for device: {}", deviceSn);
+					log.debug("Completed telemetry stream for device: {}", deviceSn);
 				} catch (Exception e) {
-					log.warn("Error completing stream for device {}: {}", deviceSn, e.getMessage());
+					log.warn("Error completing telemetry stream for device {}: {}", deviceSn, e.getMessage());
 				}
 			});
-
 			activeStreams.clear();
 			streamFutures.values().forEach(f -> f.complete(null));
 			streamFutures.clear();
 
-			log.info("All telemetry streams closed");
+			activeDetectionStreams.forEach((deviceSn, stream) -> {
+				try {
+					stream.onCompleted();
+					log.debug("Completed detection stream for device: {}", deviceSn);
+				} catch (Exception e) {
+					log.warn("Error completing detection stream for device {}: {}", deviceSn, e.getMessage());
+				}
+			});
+			activeDetectionStreams.clear();
+			detectionStreamFutures.values().forEach(f -> f.complete(null));
+			detectionStreamFutures.clear();
+
+			activeNotificationStreams.forEach((deviceSn, stream) -> {
+				try {
+					stream.onCompleted();
+					log.debug("Completed notification stream for device: {}", deviceSn);
+				} catch (Exception e) {
+					log.warn("Error completing notification stream for device {}: {}", deviceSn, e.getMessage());
+				}
+			});
+			activeNotificationStreams.clear();
+			notificationStreamFutures.values().forEach(f -> f.complete(null));
+			notificationStreamFutures.clear();
+
+			log.info("All streams closed");
 		});
 	}
 
