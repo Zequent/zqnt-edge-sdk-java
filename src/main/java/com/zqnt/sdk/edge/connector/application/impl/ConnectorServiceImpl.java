@@ -171,7 +171,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Asset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDTO());
+					return protoJsonMapper.map(response.getAssetDto());
 				});
 	}
 
@@ -191,7 +191,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Asset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDTO());
+					return protoJsonMapper.map(response.getAssetDto());
 				});
 	}
 
@@ -211,7 +211,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting SubAsset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getSubAssetDTO());
+					return protoJsonMapper.map(response.getSubAssetDto());
 				});
 	}
 
@@ -224,7 +224,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTid(UUID.randomUUID().toString())
 						.build())
 				.setAssetId(id)
-				.setAssetDTO(protoJsonMapper.map(assetDTO))
+				.setAssetDto(protoJsonMapper.map(assetDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateAsset)
@@ -233,7 +233,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating asset: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDTO());
+					return protoJsonMapper.map(response.getAssetDto());
 				});
 	}
 
@@ -245,7 +245,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTimestamp(ProtobufHelpers.now())
 						.setSn(assetDTO.getSn())
 						.build())
-				.setAssetDTO(protoJsonMapper.map(assetDTO))
+				.setAssetDto(protoJsonMapper.map(assetDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::registerAsset)
@@ -254,7 +254,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error registering asset: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDTO());
+					return protoJsonMapper.map(response.getAssetDto());
 				});
 	}
 
@@ -293,7 +293,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				});
 	}
 
@@ -304,7 +304,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setMissionDTO(protoJsonMapper.map(missionDTO))
+				.setMissionDto(protoJsonMapper.map(missionDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createMission)
@@ -313,7 +313,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				});
 	}
 
@@ -325,7 +325,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setMissionId(id)
-				.setMissionDTO(protoJsonMapper.map(missionDTO))
+				.setMissionDto(protoJsonMapper.map(missionDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateMission)
@@ -334,7 +334,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				});
 	}
 
@@ -374,7 +374,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				});
 	}
 
@@ -385,7 +385,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setTaskDTO(protoJsonMapper.map(taskDTO))
+				.setTaskDto(protoJsonMapper.map(taskDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createTask)
@@ -394,7 +394,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				});
 	}
 
@@ -406,7 +406,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setTaskId(id)
-				.setTaskDTO(protoJsonMapper.map(taskDTO))
+				.setTaskDto(protoJsonMapper.map(taskDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateTask)
@@ -415,7 +415,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				});
 	}
 
@@ -455,7 +455,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting task by flight id: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				});
 	}
 
@@ -475,7 +475,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDTO());
+					return protoJsonMapper.map(response.getSchedulerDto());
 				});
 	}
 
@@ -486,7 +486,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setSchedulerDTO(protoJsonMapper.map(schedulerDTO))
+				.setSchedulerDto(protoJsonMapper.map(schedulerDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createScheduler)
@@ -495,7 +495,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDTO());
+					return protoJsonMapper.map(response.getSchedulerDto());
 				});
 	}
 
@@ -507,7 +507,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setSchedulerId(id)
-				.setSchedulerDTO(protoJsonMapper.map(schedulerDTO))
+				.setSchedulerDto(protoJsonMapper.map(schedulerDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateScheduler)
@@ -516,7 +516,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDTO());
+					return protoJsonMapper.map(response.getSchedulerDto());
 				});
 	}
 
@@ -555,7 +555,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Organization: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getOrganizationDTO());
+					return protoJsonMapper.map(response.getOrganizationDto());
 				});
 	}
 

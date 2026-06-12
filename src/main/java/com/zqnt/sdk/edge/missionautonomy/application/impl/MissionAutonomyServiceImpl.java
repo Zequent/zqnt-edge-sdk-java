@@ -161,7 +161,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error creating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error creating mission", t);
@@ -178,7 +178,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error updating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error updating mission", t);
@@ -194,7 +194,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDTO());
+					return protoJsonMapper.map(response.getMissionDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting mission", t);
@@ -210,7 +210,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting task", t);
@@ -226,7 +226,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting task by flight id: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDTO());
+					return protoJsonMapper.map(response.getTaskDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting task by flight id", t);
@@ -242,7 +242,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDTO());
+					return protoJsonMapper.map(response.getSchedulerDto());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting scheduler", t);

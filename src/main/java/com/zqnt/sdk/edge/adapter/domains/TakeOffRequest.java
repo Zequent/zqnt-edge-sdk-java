@@ -13,4 +13,5 @@ public class TakeOffRequest {
 	private String sn;
 	private String tid;
 	private Coordinates coordinates;
+	private String externalId;
 }

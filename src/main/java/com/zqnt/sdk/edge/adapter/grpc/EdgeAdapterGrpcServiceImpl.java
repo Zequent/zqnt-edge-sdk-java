@@ -447,7 +447,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 			builder.setHasErrors(true)
 					.setError(GlobalErrorMessage.newBuilder()
 							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCode.CLIENT_ERROR)
+							.setErrorCode(ErrorCode.ERROR_CODE_CLIENT)
 							.setTimestamp(ProtobufHelpers.now())
 							.build());
 
@@ -462,7 +462,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 			builder.setHasErrors(true)
 					.setError(GlobalErrorMessage.newBuilder()
 							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCode.ASSET_ERROR)
+							.setErrorCode(ErrorCode.ERROR_CODE_ASSET)
 							.setTimestamp(ProtobufHelpers.now())
 							.build());
 		}
@@ -495,13 +495,13 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	private ErrorCode determineErrorCode(Throwable error) {
 		// You can customize this based on exception types
 		if (error instanceof IllegalArgumentException) {
-			return ErrorCode.CLIENT_ERROR;
+			return ErrorCode.ERROR_CODE_CLIENT;
 		} else if (error instanceof UnsupportedOperationException) {
-			return ErrorCode.CLIENT_ERROR;
+			return ErrorCode.ERROR_CODE_CLIENT;
 		} else if (error instanceof java.util.concurrent.TimeoutException) {
-			return ErrorCode.SYSTEM_ERROR;
+			return ErrorCode.ERROR_CODE_SYSTEM;
 		}
-		return ErrorCode.SYSTEM_ERROR;
+		return ErrorCode.ERROR_CODE_SYSTEM;
 	}
 
 	/**

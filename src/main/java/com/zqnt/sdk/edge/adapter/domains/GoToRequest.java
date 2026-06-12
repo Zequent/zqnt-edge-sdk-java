@@ -12,4 +12,5 @@ public class GoToRequest {
 	private String sn;
 	private String tid;
 	private Coordinates coordinates;
+	private String externalId;
 }
