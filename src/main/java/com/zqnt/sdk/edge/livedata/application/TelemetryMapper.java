@@ -7,6 +7,7 @@ import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zqnt.utils.livedata.proto.AssetTelemetry;
+import com.zqnt.utils.livedata.proto.PayloadTelemetry;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 import com.zqnt.utils.livedata.proto.SubAssetTelemetry;
 
@@ -321,10 +322,42 @@ public class TelemetryMapper {
             builder.setBatteryInformation(batteryBuilder.build());
         }
 
-        // Payload Telemetry (nested object - would need proper mapping if available)
-        // if (telemetryData.getPayloadTelemetry() != null) {
-        //     builder.setPayloadTelemetry(...);
-        // }
+        // Payload Telemetry
+        if (telemetryData.getPayloadTelemetry() != null) {
+            SubAssetTelemetryData.PayloadTelemetry pt = telemetryData.getPayloadTelemetry();
+            PayloadTelemetry.Builder payloadProtoBuilder = PayloadTelemetry.newBuilder();
+
+            if (pt.getId() != null) payloadProtoBuilder.setId(pt.getId());
+            if (pt.getName() != null) payloadProtoBuilder.setName(pt.getName());
+            if (pt.getTimestamp() != null) payloadProtoBuilder.setTimestamp(toTimestamp(pt.getTimestamp()));
+
+            if (pt.getCameraData() != null) {
+                PayloadTelemetry.CameraData.Builder cameraBuilder = PayloadTelemetry.CameraData.newBuilder();
+                if (pt.getCameraData().getCurrentLens() != null) cameraBuilder.setCurrentLens(pt.getCameraData().getCurrentLens());
+                if (pt.getCameraData().getGimbalPitch() != null) cameraBuilder.setGimbalPitch(pt.getCameraData().getGimbalPitch());
+                if (pt.getCameraData().getGimbalYaw() != null) cameraBuilder.setGimbalYaw(pt.getCameraData().getGimbalYaw());
+                if (pt.getCameraData().getGimbalRoll() != null) cameraBuilder.setGimbalRoll(pt.getCameraData().getGimbalRoll());
+                if (pt.getCameraData().getZoomFactor() != null) cameraBuilder.setZoomFactor(pt.getCameraData().getZoomFactor());
+                payloadProtoBuilder.setCameraData(cameraBuilder.build());
+            }
+
+            if (pt.getRangeFinderData() != null) {
+                PayloadTelemetry.RangeFinderData.Builder rangeBuilder = PayloadTelemetry.RangeFinderData.newBuilder();
+                if (pt.getRangeFinderData().getTargetLatitude() != null) rangeBuilder.setTargetLatitude(pt.getRangeFinderData().getTargetLatitude());
+                if (pt.getRangeFinderData().getTargetLongitude() != null) rangeBuilder.setTargetLongitude(pt.getRangeFinderData().getTargetLongitude());
+                if (pt.getRangeFinderData().getTargetDistance() != null) rangeBuilder.setTargetDistance(pt.getRangeFinderData().getTargetDistance());
+                if (pt.getRangeFinderData().getTargetAltitude() != null) rangeBuilder.setTargetAltitude(pt.getRangeFinderData().getTargetAltitude());
+                payloadProtoBuilder.setRangeFinderData(rangeBuilder.build());
+            }
+
+            if (pt.getSensorData() != null) {
+                PayloadTelemetry.SensorData.Builder sensorBuilder = PayloadTelemetry.SensorData.newBuilder();
+                if (pt.getSensorData().getTargetTemperature() != null) sensorBuilder.setTargetTemperature(pt.getSensorData().getTargetTemperature());
+                payloadProtoBuilder.setSensorData(sensorBuilder.build());
+            }
+
+            builder.setPayloadTelemetry(payloadProtoBuilder.build());
+        }
 
         return builder.build();
     }
