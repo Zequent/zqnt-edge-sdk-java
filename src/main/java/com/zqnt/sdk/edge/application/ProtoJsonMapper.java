@@ -476,6 +476,9 @@ public class ProtoJsonMapper {
             builder.snNumber(proto.getSnNumber());
         }
 
+        if (proto.hasExternalTaskId()) {
+            builder.externalTaskId(proto.getExternalTaskId());
+        }
         if (proto.hasConfig()) {
             builder.config(JsonUtils.fromJson(proto.getConfig(), TaskConfigTemplate.class));
         }
@@ -523,6 +526,9 @@ public class ProtoJsonMapper {
             builder.setSnNumber(dto.getSnNumber());
         }
 
+        if (dto.getExternalTaskId() != null) {
+            builder.setExternalTaskId(dto.getExternalTaskId());
+        }
         if (dto.getConfig() != null) {
             builder.setConfig(JsonUtils.toJson(dto.getConfig()));
         }
