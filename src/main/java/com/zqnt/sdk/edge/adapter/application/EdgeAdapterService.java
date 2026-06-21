@@ -256,7 +256,26 @@ public interface EdgeAdapterService {
 	 * @return {@link CommandResult}
 	 */
 	default CompletableFuture<CommandResult> startTask(String taskId, String tid) {
-		return CompletableFuture.completedFuture(CommandResult.notImplemented("startTask is not implemented for this task",taskId));
+		return CompletableFuture.completedFuture(CommandResult.notImplemented("startTask is not implemented for this asset, taskId",taskId));
+	}
+
+
+	/**
+	 * Pause a task
+	 * @param taskId
+	 * @return {@link CommandResult}
+	 */
+	default CompletableFuture<CommandResult> pauseTask(String taskId){
+		return CompletableFuture.completedFuture(CommandResult.notImplemented("pauseTask is not implemented for this asset, taskId", taskId));
+	}
+
+	/**
+	 * Resume a paused Task
+	 * @param taskId
+	 * @return {@link CommandResult}
+	 */
+	default CompletableFuture<CommandResult> resumeTask(String taskId){
+		return CompletableFuture.completedFuture(CommandResult.notImplemented("resumeTask is not implemented for this asset, taskId", taskId));
 	}
 
 	/**

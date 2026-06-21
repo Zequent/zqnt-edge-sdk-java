@@ -433,6 +433,38 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				});
 	}
 
+
+	@Override
+	public void pauseTask(EdgePauseTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
+		log.info("PauseTask for Edge SN: {}", request.getBase().getSn());
+		edgeAdapterService.pauseTask(request.getTaskId())
+				.thenAccept(result -> {
+					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
+					responseObserver.onCompleted();
+				})
+				.exceptionally(throwable -> {
+					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
+					responseObserver.onCompleted();
+					return null;
+				});
+	}
+
+
+	@Override
+	public void resumeTask(EdgeResumeTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
+		log.info("ResumeTask fro Edge SN: {}", request.getBase().getSn());
+		edgeAdapterService.resumeTask(request.getTaskId())
+				.thenAccept(result -> {
+					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
+					responseObserver.onCompleted();
+				})
+				.exceptionally(throwable -> {
+					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
+					responseObserver.onCompleted();
+					return null;
+				});
+	}
+
 	protected EdgeResponse toEdgeResponse(RequestBase base, CommandResult result) {
 		EdgeResponse.Builder builder = EdgeResponse.newBuilder()
 				.setTid(base.getTid())
