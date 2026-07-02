@@ -158,10 +158,6 @@ public class TelemetryMapper {
         }
 
         // Nested objects
-
-
-        //TODO handle mapping
-        // PositionState (contains gpsNumber, rtkNumber, quality)
         if (telemetryData.getPositionState() != null) {
             com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.Builder posStateBuilder =
                     com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.newBuilder();
@@ -211,6 +207,39 @@ public class TelemetryMapper {
                 netInfoBuilder.setQuality(telemetryData.getNetworkInformation().getQuality());
             }
             builder.setNetworkInformation(netInfoBuilder.build());
+        }
+
+        if (telemetryData.getWirelessLink() != null){
+            AssetTelemetry.AssetWirelessLinkInformation.Builder wirelessLinkBuilder = AssetTelemetry.AssetWirelessLinkInformation.newBuilder();
+            if (telemetryData.getWirelessLink().getSdrFreqBand() != null) {
+                wirelessLinkBuilder.setSdrFreqBand(telemetryData.getWirelessLink().getSdrFreqBand());
+            }
+            if (telemetryData.getWirelessLink().getSdrLinkState() != null) {
+                wirelessLinkBuilder.setSdrLinkState(telemetryData.getWirelessLink().getSdrLinkState());
+            }
+            if (telemetryData.getWirelessLink().getSdrQuality() != null) {
+                wirelessLinkBuilder.setSdrQuality(telemetryData.getWirelessLink().getSdrQuality());
+            }
+            if (telemetryData.getWirelessLink().getDongleNumber() != null) {
+                wirelessLinkBuilder.setDongleNumber(telemetryData.getWirelessLink().getDongleNumber());
+            }
+            if (telemetryData.getWirelessLink().getFourthGenerationLinkState() != null) {
+                wirelessLinkBuilder.setFourthGenerationLinkState(telemetryData.getWirelessLink().getFourthGenerationLinkState());
+            }
+            if (telemetryData.getWirelessLink().getFourthGenerationQuality() != null) {
+                wirelessLinkBuilder.setFourthGenerationQuality(telemetryData.getWirelessLink().getFourthGenerationQuality());
+            }
+            if (telemetryData.getWirelessLink().getFourthGenerationGndQuality() != null) {
+                wirelessLinkBuilder.setFourthGenerationGndQuality(telemetryData.getWirelessLink().getFourthGenerationGndQuality());
+            }
+            if (telemetryData.getWirelessLink().getFourthGenerationUavQuality() != null) {
+                wirelessLinkBuilder.setFourthGenerationUavQuality(telemetryData.getWirelessLink().getFourthGenerationUavQuality());
+            }
+            if (telemetryData.getWirelessLink().getLinkWorkmode() != null) {
+                wirelessLinkBuilder.setLinkWorkmode(telemetryData.getWirelessLink().getLinkWorkmode());
+            }
+
+            builder.setWirelessLink(wirelessLinkBuilder.build());
         }
 
         // AirConditioner (contains state, switchTime)
