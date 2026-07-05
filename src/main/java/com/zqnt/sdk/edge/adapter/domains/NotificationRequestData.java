@@ -4,6 +4,8 @@ import com.zqnt.utils.common.proto.MissionStatus;
 import com.zqnt.utils.common.proto.MissionType;
 import com.zqnt.utils.common.proto.TaskStatus;
 import com.zqnt.utils.common.proto.TaskTypeProto;
+import com.zqnt.utils.livedata.proto.NotificationEventType;
+import com.zqnt.utils.livedata.proto.NotificationSeverity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,6 +27,8 @@ public class NotificationRequestData {
 	private AssetStatusEventData assetStatusEvent;
 	private TaskEventData taskEvent;
 	private OperationEventData operationEvent;
+	private NotificationSeverity severity;
+	private NotificationEventType eventType;
 
 	@Data
 	@Builder
@@ -34,6 +38,7 @@ public class NotificationRequestData {
 		private String sn;
 		private String assetId;
 		private boolean online;
+		private String message;
 	}
 
 	@Data

@@ -1,32 +1,37 @@
 package com.zqnt.sdk.edge.livedata.application;
 
 import com.google.protobuf.Timestamp;
-import com.zqnt.utils.common.proto.RequestBase;
-import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
 import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
-import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zqnt.utils.livedata.proto.AssetTelemetry;
 import com.zqnt.utils.livedata.proto.PayloadTelemetry;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 import com.zqnt.utils.livedata.proto.SubAssetTelemetry;
+import com.zqnt.sdk.edge.support.MapperSupport;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
- * Simple mapper for converting telemetry POJO data to Proto messages
+ * Mapper for converting telemetry POJO data to Proto messages and back.
  */
 public class TelemetryMapper {
 
     public TelemetryRequestData map(ProduceTelemetryRequest request) {
-        if (request == null) return null;
+        if (request == null) {
+            return null;
+        }
 
         TelemetryRequestData data = new TelemetryRequestData();
-        data.setSn(request.getBase().getSn());
-        data.setTid(request.getBase().getTid());
-        data.setTimestamp(toLocalDateTime(request.getBase().getTimestamp()));
+        if (request.hasBase()) {
+            data.setSn(request.getBase().getSn());
+            data.setTid(request.getBase().getTid());
+            data.setTimestamp(MapperSupport.toLocalDateTime(request.getBase().getTimestamp()));
+        }
+        data.setType(request.getType());
 
         if (request.hasAssetTelemetry()) {
             data.setAssetTelemetry(map(request.getAssetTelemetry()));
@@ -39,606 +44,485 @@ public class TelemetryMapper {
     }
 
     public ProduceTelemetryRequest map(TelemetryRequestData requestData) {
-        if (requestData == null) return null;
-
-        RequestBase.Builder baseBuilder = RequestBase.newBuilder()
-                .setSn(requestData.getSn() != null ? requestData.getSn() : "")
-                .setTid(requestData.getTid() != null ? requestData.getTid() : "");
-
-        if (requestData.getTimestamp() != null) {
-            baseBuilder.setTimestamp(toTimestamp(requestData.getTimestamp()));
-        } else {
-            baseBuilder.setTimestamp(ProtobufHelpers.now());
+        if (requestData == null) {
+            return null;
         }
+
+        var baseBuilder = MapperSupport.requestBase(
+                requestData.getSn(),
+                requestData.getTid(),
+                requestData.getTimestamp());
 
         ProduceTelemetryRequest.Builder builder = ProduceTelemetryRequest.newBuilder()
                 .setBase(baseBuilder.build());
 
-        if (requestData.getAssetTelemetry() != null) {
-            builder.setAssetTelemetry(map(requestData.getAssetTelemetry()));
-        }
-        if (requestData.getSubAssetTelemetry() != null) {
-            builder.setSubAssetTelemetry(map(requestData.getSubAssetTelemetry()));
-        }
+        setIfNotNull(builder::setType, requestData.getType());
+        setIfNotNull(builder::setAssetTelemetry, map(requestData.getAssetTelemetry()));
+        setIfNotNull(builder::setSubAssetTelemetry, map(requestData.getSubAssetTelemetry()));
 
         return builder.build();
     }
 
     public AssetTelemetry map(AssetTelemetryData telemetryData) {
-        if (telemetryData == null) return null;
+        if (telemetryData == null) {
+            return null;
+        }
 
         AssetTelemetry.Builder builder = AssetTelemetry.newBuilder();
 
-        // ID and identification fields
-        if (telemetryData.getId() != null) {
-            builder.setId(telemetryData.getId());
-        }
-
-        // Timestamp
-        if (telemetryData.getTimestamp() != null) {
-            builder.setTimestamp(toTimestamp(telemetryData.getTimestamp()));
-        }
-
-        // Position fields
-        if (telemetryData.getLatitude() != null) {
-            builder.setLatitude(telemetryData.getLatitude());
-        }
-        if (telemetryData.getLongitude() != null) {
-            builder.setLongitude(telemetryData.getLongitude());
-        }
-        if (telemetryData.getAbsoluteAltitude() != null) {
-            builder.setAbsoluteAltitude(telemetryData.getAbsoluteAltitude());
-        }
-        if (telemetryData.getRelativeAltitude() != null) {
-            builder.setRelativeAltitude(telemetryData.getRelativeAltitude());
-        }
-        if (telemetryData.getHeading() != null) {
-            builder.setHeading(telemetryData.getHeading());
-        }
-
-        // Environmental fields
-        if (telemetryData.getEnvironmentTemp() != null) {
-            builder.setEnvironmentTemp(telemetryData.getEnvironmentTemp());
-        }
-        if (telemetryData.getInsideTemp() != null) {
-            builder.setInsideTemp(telemetryData.getInsideTemp());
-        }
-        if (telemetryData.getHumidity() != null) {
-            builder.setHumidity(telemetryData.getHumidity());
-        }
-        if (telemetryData.getRainfall() != null) {
-            builder.setRainfall(telemetryData.getRainfall());
-        }
-        if (telemetryData.getWindSpeed() != null) {
-            builder.setWindSpeed(telemetryData.getWindSpeed());
-        }
-
-        // Power and voltage fields
-        if (telemetryData.getWorkingVoltage() != null) {
-            builder.setWorkingVoltage(telemetryData.getWorkingVoltage());
-        }
-        if (telemetryData.getWorkingCurrent() != null) {
-            builder.setWorkingCurrent(telemetryData.getWorkingCurrent());
-        }
-        if (telemetryData.getSupplyVoltage() != null) {
-            builder.setSupplyVoltage(telemetryData.getSupplyVoltage());
-        }
-
-        // Status fields
-        if (telemetryData.getCoverState() != null) {
-            builder.setCoverState(telemetryData.getCoverState());
-        }
-        if (telemetryData.getSubAssetAtHome() != null) {
-            builder.setSubAssetAtHome(telemetryData.getSubAssetAtHome());
-        }
-        if (telemetryData.getSubAssetCharging() != null) {
-            builder.setSubAssetCharging(telemetryData.getSubAssetCharging());
-        }
-        if (telemetryData.getSubAssetPercentage() != null) {
-            builder.setSubAssetPercentage(telemetryData.getSubAssetPercentage());
-        }
-        if (telemetryData.getDebugModeOpen() != null) {
-            builder.setDebugModeOpen(telemetryData.getDebugModeOpen());
-        }
-        if (telemetryData.getHasActiveManualControlSession() != null) {
-            builder.setHasActiveManualControlSession(telemetryData.getHasActiveManualControlSession());
-        }
-        if (telemetryData.getManualControlState() != null) {
-            builder.setManualControlState(telemetryData.getManualControlState());
-        }
-
-        // GPS fields
-        if (telemetryData.getPositionValid() != null) {
-            builder.setPositionValid(telemetryData.getPositionValid());
-        }
-
-        // Mode
-        if (telemetryData.getMode() != null) {
-            builder.setMode(telemetryData.getMode());
-        }
-
-        // Nested objects
-        if (telemetryData.getPositionState() != null) {
-            com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.Builder posStateBuilder =
-                    com.zqnt.utils.livedata.proto.AssetTelemetry.PositionState.newBuilder();
-
-            if (telemetryData.getPositionState().getGpsNumber() != null) {
-                posStateBuilder.setGpsNumber(telemetryData.getPositionState().getGpsNumber());
-            }
-            if (telemetryData.getPositionState().getRtkNumber() != null) {
-                posStateBuilder.setRtkNumber(telemetryData.getPositionState().getRtkNumber());
-            }
-            if (telemetryData.getPositionState().getQuality() != null) {
-                posStateBuilder.setQuality(telemetryData.getPositionState().getQuality());
-            }
-            builder.setPositionState(posStateBuilder.build());
-        }
-
-        // SubAssetInformation (contains sn, model, paired, online)
-        if (telemetryData.getSubAssetInformation() != null) {
-            AssetTelemetry.AssetSubAssetInformation.Builder subAssetBuilder = AssetTelemetry.AssetSubAssetInformation.newBuilder();
-
-            if (telemetryData.getSubAssetInformation().getSn() != null) {
-                subAssetBuilder.setSn(telemetryData.getSubAssetInformation().getSn());
-            }
-            if (telemetryData.getSubAssetInformation().getModel() != null) {
-                subAssetBuilder.setModel(telemetryData.getSubAssetInformation().getModel());
-            }
-            if (telemetryData.getSubAssetInformation().getPaired() != null) {
-                subAssetBuilder.setPaired(telemetryData.getSubAssetInformation().getPaired());
-            }
-            if (telemetryData.getSubAssetInformation().getOnline() != null) {
-                subAssetBuilder.setOnline(telemetryData.getSubAssetInformation().getOnline());
-            }
-            builder.setSubAssetInformation(subAssetBuilder.build());
-        }
-
-        // NetworkInformation (contains type, rate, quality)
-        if (telemetryData.getNetworkInformation() != null) {
-            AssetTelemetry.AssetNetworkInformation.Builder netInfoBuilder = AssetTelemetry.AssetNetworkInformation.newBuilder();
-
-            if (telemetryData.getNetworkInformation().getType() != null) {
-                netInfoBuilder.setType(telemetryData.getNetworkInformation().getType());
-            }
-            if (telemetryData.getNetworkInformation().getRate() != null) {
-                netInfoBuilder.setRate(telemetryData.getNetworkInformation().getRate());
-            }
-            if (telemetryData.getNetworkInformation().getQuality() != null) {
-                netInfoBuilder.setQuality(telemetryData.getNetworkInformation().getQuality());
-            }
-            builder.setNetworkInformation(netInfoBuilder.build());
-        }
-
-        if (telemetryData.getWirelessLink() != null){
-            AssetTelemetry.AssetWirelessLinkInformation.Builder wirelessLinkBuilder = AssetTelemetry.AssetWirelessLinkInformation.newBuilder();
-            if (telemetryData.getWirelessLink().getSdrFreqBand() != null) {
-                wirelessLinkBuilder.setSdrFreqBand(telemetryData.getWirelessLink().getSdrFreqBand());
-            }
-            if (telemetryData.getWirelessLink().getSdrLinkState() != null) {
-                wirelessLinkBuilder.setSdrLinkState(telemetryData.getWirelessLink().getSdrLinkState());
-            }
-            if (telemetryData.getWirelessLink().getSdrQuality() != null) {
-                wirelessLinkBuilder.setSdrQuality(telemetryData.getWirelessLink().getSdrQuality());
-            }
-            if (telemetryData.getWirelessLink().getDongleNumber() != null) {
-                wirelessLinkBuilder.setDongleNumber(telemetryData.getWirelessLink().getDongleNumber());
-            }
-            if (telemetryData.getWirelessLink().getFourthGenerationLinkState() != null) {
-                wirelessLinkBuilder.setFourthGenerationLinkState(telemetryData.getWirelessLink().getFourthGenerationLinkState());
-            }
-            if (telemetryData.getWirelessLink().getFourthGenerationQuality() != null) {
-                wirelessLinkBuilder.setFourthGenerationQuality(telemetryData.getWirelessLink().getFourthGenerationQuality());
-            }
-            if (telemetryData.getWirelessLink().getFourthGenerationGndQuality() != null) {
-                wirelessLinkBuilder.setFourthGenerationGndQuality(telemetryData.getWirelessLink().getFourthGenerationGndQuality());
-            }
-            if (telemetryData.getWirelessLink().getFourthGenerationUavQuality() != null) {
-                wirelessLinkBuilder.setFourthGenerationUavQuality(telemetryData.getWirelessLink().getFourthGenerationUavQuality());
-            }
-            if (telemetryData.getWirelessLink().getLinkWorkmode() != null) {
-                wirelessLinkBuilder.setLinkWorkmode(telemetryData.getWirelessLink().getLinkWorkmode());
-            }
-
-            builder.setWirelessLink(wirelessLinkBuilder.build());
-        }
-
-        // AirConditioner (contains state, switchTime)
-        if (telemetryData.getAirConditioner() != null) {
-            AssetTelemetry.AssetAirConditioner.Builder airCondBuilder = AssetTelemetry.AssetAirConditioner.newBuilder();
-
-            if (telemetryData.getAirConditioner().getState() != null) {
-                airCondBuilder.setState(telemetryData.getAirConditioner().getState());
-            }
-            if (telemetryData.getAirConditioner().getSwitchTime() != null) {
-                airCondBuilder.setSwitchTime(telemetryData.getAirConditioner().getSwitchTime());
-            }
-            builder.setAirConditioner(airCondBuilder.build());
-        }
+        setIfNotNull(builder::setSn, telemetryData.getSn());
+        setIfNotNull(builder::setId, telemetryData.getId());
+        setIfNotNull(builder::setTimestamp, MapperSupport.toTimestamp(telemetryData.getTimestamp()));
+        setIfNotNull(builder::setLatitude, telemetryData.getLatitude());
+        setIfNotNull(builder::setLongitude, telemetryData.getLongitude());
+        setIfNotNull(builder::setAbsoluteAltitude, telemetryData.getAbsoluteAltitude());
+        setIfNotNull(builder::setRelativeAltitude, telemetryData.getRelativeAltitude());
+        setIfNotNull(builder::setHeading, telemetryData.getHeading());
+        setIfNotNull(builder::setEnvironmentTemp, telemetryData.getEnvironmentTemp());
+        setIfNotNull(builder::setInsideTemp, telemetryData.getInsideTemp());
+        setIfNotNull(builder::setHumidity, telemetryData.getHumidity());
+        setIfNotNull(builder::setRainfall, telemetryData.getRainfall());
+        setIfNotNull(builder::setWindSpeed, telemetryData.getWindSpeed());
+        setIfNotNull(builder::setWorkingVoltage, telemetryData.getWorkingVoltage());
+        setIfNotNull(builder::setWorkingCurrent, telemetryData.getWorkingCurrent());
+        setIfNotNull(builder::setSupplyVoltage, telemetryData.getSupplyVoltage());
+        setIfNotNull(builder::setCoverState, telemetryData.getCoverState());
+        setIfNotNull(builder::setSubAssetAtHome, telemetryData.getSubAssetAtHome());
+        setIfNotNull(builder::setSubAssetCharging, telemetryData.getSubAssetCharging());
+        setIfNotNull(builder::setSubAssetPercentage, telemetryData.getSubAssetPercentage());
+        setIfNotNull(builder::setDebugModeOpen, telemetryData.getDebugModeOpen());
+        setIfNotNull(builder::setHasActiveManualControlSession, telemetryData.getHasActiveManualControlSession());
+        setIfNotNull(builder::setManualControlState, telemetryData.getManualControlState());
+        setIfNotNull(builder::setPositionValid, telemetryData.getPositionValid());
+        setIfNotNull(builder::setMode, telemetryData.getMode());
+        setIfNotNull(builder::setPositionState, mapPositionState(telemetryData.getPositionState()));
+        setIfNotNull(builder::setSubAssetInformation, mapSubAssetInformation(telemetryData.getSubAssetInformation()));
+        setIfNotNull(builder::setNetworkInformation, mapNetworkInformation(telemetryData.getNetworkInformation()));
+        setIfNotNull(builder::setWirelessLink, mapWirelessLinkInformation(telemetryData.getWirelessLink()));
+        setIfNotNull(builder::setSdrState, mapSdrState(telemetryData.getSdrState()));
+        setIfNotNull(builder::setAirConditioner, mapAirConditioner(telemetryData.getAirConditioner()));
 
         return builder.build();
     }
 
+
     public SubAssetTelemetry map(SubAssetTelemetryData telemetryData) {
-        if (telemetryData == null) return null;
+        if (telemetryData == null) {
+            return null;
+        }
 
         SubAssetTelemetry.Builder builder = SubAssetTelemetry.newBuilder();
 
-        // ID
-        if (telemetryData.getId() != null) {
-            builder.setId(telemetryData.getId());
-        }
-
-        // Timestamp
-        if (telemetryData.getTimestamp() != null) {
-            builder.setTimestamp(toTimestamp(telemetryData.getTimestamp()));
-        }
-
-        // Position fields
-        if (telemetryData.getLatitude() != null) {
-            builder.setLatitude(telemetryData.getLatitude());
-        }
-        if (telemetryData.getLongitude() != null) {
-            builder.setLongitude(telemetryData.getLongitude());
-        }
-        if (telemetryData.getAbsoluteAltitude() != null) {
-            builder.setAbsoluteAltitude(telemetryData.getAbsoluteAltitude());
-        }
-        if (telemetryData.getRelativeAltitude() != null) {
-            builder.setRelativeAltitude(telemetryData.getRelativeAltitude());
-        }
-        if (telemetryData.getHeading() != null) {
-            builder.setHeading(telemetryData.getHeading());
-        }
-
-        // Speed fields
-        if (telemetryData.getHorizontalSpeed() != null) {
-            builder.setHorizontalSpeed(telemetryData.getHorizontalSpeed());
-        }
-        if (telemetryData.getVerticalSpeed() != null) {
-            builder.setVerticalSpeed(telemetryData.getVerticalSpeed());
-        }
-
-        // Wind
-        if (telemetryData.getWindSpeed() != null) {
-            builder.setWindSpeed(telemetryData.getWindSpeed());
-        }
-        if (telemetryData.getWindDirection() != null) {
-            builder.setWindDirection(telemetryData.getWindDirection());
-        }
-
-        // Flight parameters
-        if (telemetryData.getGear() != null) {
-            builder.setGear(telemetryData.getGear());
-        }
-        if (telemetryData.getHeightLimit() != null) {
-            builder.setHeightLimit(telemetryData.getHeightLimit());
-        }
-        if (telemetryData.getHomeDistance() != null) {
-            builder.setHomeDistance(telemetryData.getHomeDistance());
-        }
-        if (telemetryData.getTotalMovementDistance() != null) {
-            builder.setTotalMovementDistance(telemetryData.getTotalMovementDistance());
-        }
-        if (telemetryData.getTotalMovementTime() != null) {
-            builder.setTotalMovementTime(telemetryData.getTotalMovementTime());
-        }
-
-        // Country
-        if (telemetryData.getCountry() != null) {
-            builder.setCountry(telemetryData.getCountry());
-        }
-
-        // Mode
-        if (telemetryData.getMode() != null) {
-            builder.setMode(telemetryData.getMode());
-        }
-
-        // Battery Information
-        if (telemetryData.getBatteryInformation() != null && telemetryData.getBatteryInformation().getPercentage() != null) {
-            SubAssetTelemetry.SubAssetBatteryInformation.Builder batteryBuilder =
-                    SubAssetTelemetry.SubAssetBatteryInformation.newBuilder();
-
-            if (telemetryData.getBatteryInformation().getPercentage() != null) {
-                batteryBuilder.setPercentage(telemetryData.getBatteryInformation().getPercentage());
-            }
-            if (telemetryData.getBatteryInformation().getRemainingTime() != null) {
-                batteryBuilder.setRemainingTime(telemetryData.getBatteryInformation().getRemainingTime());
-            }
-            if (telemetryData.getBatteryInformation().getReturnToHomePower() != null) {
-                batteryBuilder.setReturnToHomePower(telemetryData.getBatteryInformation().getReturnToHomePower());
-            }
-
-            builder.setBatteryInformation(batteryBuilder.build());
-        }
-
-        // Payload Telemetry
-        if (telemetryData.getPayloadTelemetry() != null) {
-            SubAssetTelemetryData.PayloadTelemetry pt = telemetryData.getPayloadTelemetry();
-            PayloadTelemetry.Builder payloadProtoBuilder = PayloadTelemetry.newBuilder();
-
-            if (pt.getId() != null) payloadProtoBuilder.setId(pt.getId());
-            if (pt.getName() != null) payloadProtoBuilder.setName(pt.getName());
-            if (pt.getTimestamp() != null) payloadProtoBuilder.setTimestamp(toTimestamp(pt.getTimestamp()));
-
-            if (pt.getCameraData() != null) {
-                PayloadTelemetry.CameraData.Builder cameraBuilder = PayloadTelemetry.CameraData.newBuilder();
-                if (pt.getCameraData().getCurrentLens() != null) cameraBuilder.setCurrentLens(pt.getCameraData().getCurrentLens());
-                if (pt.getCameraData().getGimbalPitch() != null) cameraBuilder.setGimbalPitch(pt.getCameraData().getGimbalPitch());
-                if (pt.getCameraData().getGimbalYaw() != null) cameraBuilder.setGimbalYaw(pt.getCameraData().getGimbalYaw());
-                if (pt.getCameraData().getGimbalRoll() != null) cameraBuilder.setGimbalRoll(pt.getCameraData().getGimbalRoll());
-                if (pt.getCameraData().getZoomFactor() != null) cameraBuilder.setZoomFactor(pt.getCameraData().getZoomFactor());
-                payloadProtoBuilder.setCameraData(cameraBuilder.build());
-            }
-
-            if (pt.getRangeFinderData() != null) {
-                PayloadTelemetry.RangeFinderData.Builder rangeBuilder = PayloadTelemetry.RangeFinderData.newBuilder();
-                if (pt.getRangeFinderData().getTargetLatitude() != null) rangeBuilder.setTargetLatitude(pt.getRangeFinderData().getTargetLatitude());
-                if (pt.getRangeFinderData().getTargetLongitude() != null) rangeBuilder.setTargetLongitude(pt.getRangeFinderData().getTargetLongitude());
-                if (pt.getRangeFinderData().getTargetDistance() != null) rangeBuilder.setTargetDistance(pt.getRangeFinderData().getTargetDistance());
-                if (pt.getRangeFinderData().getTargetAltitude() != null) rangeBuilder.setTargetAltitude(pt.getRangeFinderData().getTargetAltitude());
-                payloadProtoBuilder.setRangeFinderData(rangeBuilder.build());
-            }
-
-            if (pt.getSensorData() != null) {
-                PayloadTelemetry.SensorData.Builder sensorBuilder = PayloadTelemetry.SensorData.newBuilder();
-                if (pt.getSensorData().getTargetTemperature() != null) sensorBuilder.setTargetTemperature(pt.getSensorData().getTargetTemperature());
-                payloadProtoBuilder.setSensorData(sensorBuilder.build());
-            }
-
-            builder.setPayloadTelemetry(payloadProtoBuilder.build());
-        }
+        setIfNotNull(builder::setId, telemetryData.getId());
+        setIfNotNull(builder::setTimestamp, MapperSupport.toTimestamp(telemetryData.getTimestamp()));
+        setIfNotNull(builder::setLatitude, telemetryData.getLatitude());
+        setIfNotNull(builder::setLongitude, telemetryData.getLongitude());
+        setIfNotNull(builder::setAbsoluteAltitude, telemetryData.getAbsoluteAltitude());
+        setIfNotNull(builder::setRelativeAltitude, telemetryData.getRelativeAltitude());
+        setIfNotNull(builder::setHeading, telemetryData.getHeading());
+        setIfNotNull(builder::setHorizontalSpeed, telemetryData.getHorizontalSpeed());
+        setIfNotNull(builder::setVerticalSpeed, telemetryData.getVerticalSpeed());
+        setIfNotNull(builder::setWindSpeed, telemetryData.getWindSpeed());
+        setIfNotNull(builder::setWindDirection, telemetryData.getWindDirection());
+        setIfNotNull(builder::setGear, telemetryData.getGear());
+        setIfNotNull(builder::setHeightLimit, telemetryData.getHeightLimit());
+        setIfNotNull(builder::setHomeDistance, telemetryData.getHomeDistance());
+        setIfNotNull(builder::setTotalMovementDistance, telemetryData.getTotalMovementDistance());
+        setIfNotNull(builder::setTotalMovementTime, telemetryData.getTotalMovementTime());
+        setIfNotNull(builder::setCountry, telemetryData.getCountry());
+        setIfNotNull(builder::setMode, telemetryData.getMode());
+        setIfNotNull(builder::setBatteryInformation, mapBatteryInformation(telemetryData.getBatteryInformation()));
+        setIfNotNull(builder::setPayloadTelemetry, mapPayloadTelemetry(telemetryData.getPayloadTelemetry()));
 
         return builder.build();
     }
 
     public AssetTelemetryData map(AssetTelemetry telemetry) {
-        if (telemetry == null) return null;
+        if (telemetry == null) {
+            return null;
+        }
 
         AssetTelemetryData.AssetTelemetryDataBuilder builder = AssetTelemetryData.builder()
-                // Timestamp
-                .timestamp(telemetry.hasTimestamp() ? toLocalDateTime(telemetry.getTimestamp()) : null)
-                // Position
-                .latitude(telemetry.hasLatitude() ? telemetry.getLatitude() : null)
-                .longitude(telemetry.hasLongitude() ? telemetry.getLongitude() : null)
-                .absoluteAltitude(telemetry.hasAbsoluteAltitude() ? telemetry.getAbsoluteAltitude() : null)
-                .relativeAltitude(telemetry.hasRelativeAltitude() ? telemetry.getRelativeAltitude() : null)
-                .heading(telemetry.hasHeading() ? telemetry.getHeading() : null)
-                // Environmental
-                .environmentTemp(telemetry.hasEnvironmentTemp() ? telemetry.getEnvironmentTemp() : null)
-                .insideTemp(telemetry.hasInsideTemp() ? telemetry.getInsideTemp() : null)
-                .humidity(telemetry.hasHumidity() ? telemetry.getHumidity() : null)
-                .rainfall(telemetry.hasRainfall() ? telemetry.getRainfall() : null)
-                .windSpeed(telemetry.hasWindSpeed() ? telemetry.getWindSpeed() : null)
-                // Power
-                .workingVoltage(telemetry.hasWorkingVoltage() ? telemetry.getWorkingVoltage() : null)
-                .workingCurrent(telemetry.hasWorkingCurrent() ? telemetry.getWorkingCurrent() : null)
-                .supplyVoltage(telemetry.hasSupplyVoltage() ? telemetry.getSupplyVoltage() : null)
-                // Status
-                .coverState(telemetry.hasCoverState() ? telemetry.getCoverState() : null)
-                .subAssetAtHome(telemetry.hasSubAssetAtHome() ? telemetry.getSubAssetAtHome() : null)
-                .subAssetCharging(telemetry.hasSubAssetCharging() ? telemetry.getSubAssetCharging() : null)
-                .subAssetPercentage(telemetry.hasSubAssetPercentage() ? telemetry.getSubAssetPercentage() : null)
-                .debugModeOpen(telemetry.hasDebugModeOpen() ? telemetry.getDebugModeOpen() : null)
-                .hasActiveManualControlSession(telemetry.hasHasActiveManualControlSession() ? telemetry.getHasActiveManualControlSession() : null)
-                .manualControlState(telemetry.hasManualControlState() ? telemetry.getManualControlState() : null)
-                // GPS
-                .positionValid(telemetry.hasPositionValid() ? telemetry.getPositionValid() : null)
-                // Mode
-                .mode(telemetry.hasMode() ? telemetry.getMode() : null);
+                .sn(valueIf(telemetry::hasSn, telemetry::getSn))
+                .timestamp(valueIf(telemetry::hasTimestamp, () -> MapperSupport.toLocalDateTime(telemetry.getTimestamp())))
+                .latitude(valueIf(telemetry::hasLatitude, telemetry::getLatitude))
+                .longitude(valueIf(telemetry::hasLongitude, telemetry::getLongitude))
+                .absoluteAltitude(valueIf(telemetry::hasAbsoluteAltitude, telemetry::getAbsoluteAltitude))
+                .relativeAltitude(valueIf(telemetry::hasRelativeAltitude, telemetry::getRelativeAltitude))
+                .heading(valueIf(telemetry::hasHeading, telemetry::getHeading))
+                .environmentTemp(valueIf(telemetry::hasEnvironmentTemp, telemetry::getEnvironmentTemp))
+                .insideTemp(valueIf(telemetry::hasInsideTemp, telemetry::getInsideTemp))
+                .humidity(valueIf(telemetry::hasHumidity, telemetry::getHumidity))
+                .rainfall(valueIf(telemetry::hasRainfall, telemetry::getRainfall))
+                .windSpeed(valueIf(telemetry::hasWindSpeed, telemetry::getWindSpeed))
+                .workingVoltage(valueIf(telemetry::hasWorkingVoltage, telemetry::getWorkingVoltage))
+                .workingCurrent(valueIf(telemetry::hasWorkingCurrent, telemetry::getWorkingCurrent))
+                .supplyVoltage(valueIf(telemetry::hasSupplyVoltage, telemetry::getSupplyVoltage))
+                .coverState(valueIf(telemetry::hasCoverState, telemetry::getCoverState))
+                .subAssetAtHome(valueIf(telemetry::hasSubAssetAtHome, telemetry::getSubAssetAtHome))
+                .subAssetCharging(valueIf(telemetry::hasSubAssetCharging, telemetry::getSubAssetCharging))
+                .subAssetPercentage(valueIf(telemetry::hasSubAssetPercentage, telemetry::getSubAssetPercentage))
+                .debugModeOpen(valueIf(telemetry::hasDebugModeOpen, telemetry::getDebugModeOpen))
+                .hasActiveManualControlSession(valueIf(
+                        telemetry::hasHasActiveManualControlSession,
+                        telemetry::getHasActiveManualControlSession))
+                .manualControlState(valueIf(telemetry::hasManualControlState, telemetry::getManualControlState))
+                .positionValid(valueIf(telemetry::hasPositionValid, telemetry::getPositionValid))
+                .mode(valueIf(telemetry::hasMode, telemetry::getMode));
 
-        // Nested object: PositionState
-        if (telemetry.hasPositionState()) {
-            AssetTelemetryData.PositionState.PositionStateBuilder posStateBuilder = AssetTelemetryData.PositionState.builder();
-
-            if (telemetry.getPositionState().hasGpsNumber()) {
-                posStateBuilder.gpsNumber(telemetry.getPositionState().getGpsNumber());
-            }
-            if (telemetry.getPositionState().hasRtkNumber()) {
-                posStateBuilder.rtkNumber(telemetry.getPositionState().getRtkNumber());
-            }
-            if (telemetry.getPositionState().hasQuality()) {
-                posStateBuilder.quality(telemetry.getPositionState().getQuality());
-            }
-
-            builder.positionState(posStateBuilder.build());
-        }
-
-        // Nested object: SubAssetInformation
-        if (telemetry.hasSubAssetInformation()) {
-            AssetTelemetryData.SubAssetInformation.SubAssetInformationBuilder subAssetBuilder =
-                    AssetTelemetryData.SubAssetInformation.builder();
-
-            if (telemetry.getSubAssetInformation().hasSn()) {
-                subAssetBuilder.sn(telemetry.getSubAssetInformation().getSn());
-            }
-            if (telemetry.getSubAssetInformation().hasModel()) {
-                subAssetBuilder.model(telemetry.getSubAssetInformation().getModel());
-            }
-            if (telemetry.getSubAssetInformation().hasPaired()) {
-                subAssetBuilder.paired(telemetry.getSubAssetInformation().getPaired());
-            }
-            if (telemetry.getSubAssetInformation().hasOnline()) {
-                subAssetBuilder.online(telemetry.getSubAssetInformation().getOnline());
-            }
-
-            builder.subAssetInformation(subAssetBuilder.build());
-        }
-
-        // Nested object: NetworkInformation
-        if (telemetry.hasNetworkInformation()) {
-            AssetTelemetryData.NetworkInformation.NetworkInformationBuilder netInfoBuilder =
-                    AssetTelemetryData.NetworkInformation.builder();
-
-            if (telemetry.getNetworkInformation().hasType()) {
-                netInfoBuilder.type(telemetry.getNetworkInformation().getType());
-            }
-            if (telemetry.getNetworkInformation().hasRate()) {
-                netInfoBuilder.rate(telemetry.getNetworkInformation().getRate());
-            }
-            if (telemetry.getNetworkInformation().hasQuality()) {
-                netInfoBuilder.quality(telemetry.getNetworkInformation().getQuality());
-            }
-
-            builder.networkInformation(netInfoBuilder.build());
-        }
-
-        // Nested object: AirConditioner
-        if (telemetry.hasAirConditioner()) {
-            AssetTelemetryData.AirConditioner.AirConditionerBuilder airCondBuilder =
-                    AssetTelemetryData.AirConditioner.builder();
-
-            if (telemetry.getAirConditioner().hasState()) {
-                airCondBuilder.state(telemetry.getAirConditioner().getState());
-            }
-            if (telemetry.getAirConditioner().hasSwitchTime()) {
-                airCondBuilder.switchTime(telemetry.getAirConditioner().getSwitchTime());
-            }
-
-            builder.airConditioner(airCondBuilder.build());
-        }
+        setIfNotNull(builder::positionState, valueIf(telemetry::hasPositionState,
+                () -> mapPositionState(telemetry.getPositionState())));
+        setIfNotNull(builder::subAssetInformation, valueIf(telemetry::hasSubAssetInformation,
+                () -> mapSubAssetInformation(telemetry.getSubAssetInformation())));
+        setIfNotNull(builder::networkInformation, valueIf(telemetry::hasNetworkInformation,
+                () -> mapNetworkInformation(telemetry.getNetworkInformation())));
+        setIfNotNull(builder::wirelessLink, valueIf(telemetry::hasWirelessLink,
+                () -> mapWirelessLinkInformation(telemetry.getWirelessLink())));
+        setIfNotNull(builder::airConditioner, valueIf(telemetry::hasAirConditioner,
+                () -> mapAirConditioner(telemetry.getAirConditioner())));
 
         return builder.build();
     }
 
     public SubAssetTelemetryData map(SubAssetTelemetry telemetry) {
-        if (telemetry == null) return null;
+        if (telemetry == null) {
+            return null;
+        }
 
         SubAssetTelemetryData.SubAssetTelemetryDataBuilder builder = SubAssetTelemetryData.builder()
-                // Timestamp
-                .timestamp(telemetry.hasTimestamp() ? toLocalDateTime(telemetry.getTimestamp()) : null)
-                // Position
-                .latitude(telemetry.hasLatitude() ? telemetry.getLatitude() : null)
-                .longitude(telemetry.hasLongitude() ? telemetry.getLongitude() : null)
-                .absoluteAltitude(telemetry.hasAbsoluteAltitude() ? telemetry.getAbsoluteAltitude() : null)
-                .relativeAltitude(telemetry.hasRelativeAltitude() ? telemetry.getRelativeAltitude() : null)
-                .heading(telemetry.hasHeading() ? telemetry.getHeading() : null)
-                // Speed
-                .horizontalSpeed(telemetry.hasHorizontalSpeed() ? telemetry.getHorizontalSpeed() : null)
-                .verticalSpeed(telemetry.hasVerticalSpeed() ? telemetry.getVerticalSpeed() : null)
-                // Wind
-                .windSpeed(telemetry.hasWindSpeed() ? telemetry.getWindSpeed() : null)
-                .windDirection(telemetry.hasWindDirection() ? telemetry.getWindDirection() : null)
-                // Flight parameters
-                .gear(telemetry.hasGear() ? telemetry.getGear() : null)
-                .heightLimit(telemetry.hasHeightLimit() ? telemetry.getHeightLimit() : null)
-                .homeDistance(telemetry.hasHomeDistance() ? telemetry.getHomeDistance() : null)
-                .totalMovementDistance(telemetry.hasTotalMovementDistance() ? telemetry.getTotalMovementDistance() : null)
-                .totalMovementTime(telemetry.hasTotalMovementTime() ? telemetry.getTotalMovementTime() : null)
-                // Country
-                .country(telemetry.hasCountry() ? telemetry.getCountry() : null)
-                // Mode
-                .mode(telemetry.hasMode() ? telemetry.getMode() : null);
+                .timestamp(valueIf(telemetry::hasTimestamp, () -> MapperSupport.toLocalDateTime(telemetry.getTimestamp())))
+                .latitude(valueIf(telemetry::hasLatitude, telemetry::getLatitude))
+                .longitude(valueIf(telemetry::hasLongitude, telemetry::getLongitude))
+                .absoluteAltitude(valueIf(telemetry::hasAbsoluteAltitude, telemetry::getAbsoluteAltitude))
+                .relativeAltitude(valueIf(telemetry::hasRelativeAltitude, telemetry::getRelativeAltitude))
+                .heading(valueIf(telemetry::hasHeading, telemetry::getHeading))
+                .horizontalSpeed(valueIf(telemetry::hasHorizontalSpeed, telemetry::getHorizontalSpeed))
+                .verticalSpeed(valueIf(telemetry::hasVerticalSpeed, telemetry::getVerticalSpeed))
+                .windSpeed(valueIf(telemetry::hasWindSpeed, telemetry::getWindSpeed))
+                .windDirection(valueIf(telemetry::hasWindDirection, telemetry::getWindDirection))
+                .gear(valueIf(telemetry::hasGear, telemetry::getGear))
+                .heightLimit(valueIf(telemetry::hasHeightLimit, telemetry::getHeightLimit))
+                .homeDistance(valueIf(telemetry::hasHomeDistance, telemetry::getHomeDistance))
+                .totalMovementDistance(valueIf(
+                        telemetry::hasTotalMovementDistance,
+                        telemetry::getTotalMovementDistance))
+                .totalMovementTime(valueIf(telemetry::hasTotalMovementTime, telemetry::getTotalMovementTime))
+                .country(valueIf(telemetry::hasCountry, telemetry::getCountry))
+                .mode(valueIf(telemetry::hasMode, telemetry::getMode));
 
-        // Nested object: BatteryInformation
-        if (telemetry.hasBatteryInformation()) {
-            SubAssetTelemetryData.BatteryInformation.BatteryInformationBuilder batteryBuilder =
-                    SubAssetTelemetryData.BatteryInformation.builder();
-
-            if (telemetry.getBatteryInformation().hasPercentage()) {
-                batteryBuilder.percentage(telemetry.getBatteryInformation().getPercentage());
-            }
-            if (telemetry.getBatteryInformation().hasRemainingTime()) {
-                batteryBuilder.remainingTime(telemetry.getBatteryInformation().getRemainingTime());
-            }
-            if (telemetry.getBatteryInformation().hasReturnToHomePower()) {
-                batteryBuilder.returnToHomePower(telemetry.getBatteryInformation().getReturnToHomePower());
-            }
-
-            builder.batteryInformation(batteryBuilder.build());
-        }
-
-        // Nested object: PayloadTelemetry (if available in proto)
-        if (telemetry.hasPayloadTelemetry()) {
-            SubAssetTelemetryData.PayloadTelemetry.PayloadTelemetryBuilder payloadBuilder =
-                    SubAssetTelemetryData.PayloadTelemetry.builder();
-
-            payloadBuilder.id(telemetry.getPayloadTelemetry().getId());
-            if (telemetry.getPayloadTelemetry().hasTimestamp()) {
-                payloadBuilder.timestamp(toLocalDateTime(telemetry.getPayloadTelemetry().getTimestamp()));
-            }
-            payloadBuilder.name(telemetry.getPayloadTelemetry().getName());
-
-            // CameraData
-            if (telemetry.getPayloadTelemetry().hasCameraData()) {
-                SubAssetTelemetryData.CameraData.CameraDataBuilder cameraBuilder =
-                        SubAssetTelemetryData.CameraData.builder();
-
-                if (telemetry.getPayloadTelemetry().getCameraData().hasCurrentLens()) {
-                    cameraBuilder.currentLens(telemetry.getPayloadTelemetry().getCameraData().getCurrentLens());
-                }
-                if (telemetry.getPayloadTelemetry().getCameraData().hasGimbalPitch()) {
-                    cameraBuilder.gimbalPitch(telemetry.getPayloadTelemetry().getCameraData().getGimbalPitch());
-                }
-                if (telemetry.getPayloadTelemetry().getCameraData().hasGimbalYaw()) {
-                    cameraBuilder.gimbalYaw(telemetry.getPayloadTelemetry().getCameraData().getGimbalYaw());
-                }
-                if (telemetry.getPayloadTelemetry().getCameraData().hasGimbalRoll()) {
-                    cameraBuilder.gimbalRoll(telemetry.getPayloadTelemetry().getCameraData().getGimbalRoll());
-                }
-                if (telemetry.getPayloadTelemetry().getCameraData().hasZoomFactor()) {
-                    cameraBuilder.zoomFactor(telemetry.getPayloadTelemetry().getCameraData().getZoomFactor());
-                }
-
-                payloadBuilder.cameraData(cameraBuilder.build());
-            }
-
-            // RangeFinderData
-            if (telemetry.getPayloadTelemetry().hasRangeFinderData()) {
-                SubAssetTelemetryData.RangeFinderData.RangeFinderDataBuilder rangeFinderBuilder =
-                        SubAssetTelemetryData.RangeFinderData.builder();
-
-                if (telemetry.getPayloadTelemetry().getRangeFinderData().hasTargetLatitude()) {
-                    rangeFinderBuilder.targetLatitude(telemetry.getPayloadTelemetry().getRangeFinderData().getTargetLatitude());
-                }
-                if (telemetry.getPayloadTelemetry().getRangeFinderData().hasTargetLongitude()) {
-                    rangeFinderBuilder.targetLongitude(telemetry.getPayloadTelemetry().getRangeFinderData().getTargetLongitude());
-                }
-                if (telemetry.getPayloadTelemetry().getRangeFinderData().hasTargetDistance()) {
-                    rangeFinderBuilder.targetDistance(telemetry.getPayloadTelemetry().getRangeFinderData().getTargetDistance());
-                }
-                if (telemetry.getPayloadTelemetry().getRangeFinderData().hasTargetAltitude()) {
-                    rangeFinderBuilder.targetAltitude(telemetry.getPayloadTelemetry().getRangeFinderData().getTargetAltitude());
-                }
-
-                payloadBuilder.rangeFinderData(rangeFinderBuilder.build());
-            }
-
-            // SensorData
-            if (telemetry.getPayloadTelemetry().hasSensorData()) {
-                SubAssetTelemetryData.SensorData.SensorDataBuilder sensorBuilder =
-                        SubAssetTelemetryData.SensorData.builder();
-
-                if (telemetry.getPayloadTelemetry().getSensorData().hasTargetTemperature()) {
-                    sensorBuilder.targetTemperature(telemetry.getPayloadTelemetry().getSensorData().getTargetTemperature());
-                }
-
-                payloadBuilder.sensorData(sensorBuilder.build());
-            }
-
-            builder.payloadTelemetry(payloadBuilder.build());
-        }
+        setIfNotNull(builder::batteryInformation, valueIf(telemetry::hasBatteryInformation,
+                () -> mapBatteryInformation(telemetry.getBatteryInformation())));
+        setIfNotNull(builder::payloadTelemetry, valueIf(telemetry::hasPayloadTelemetry,
+                () -> mapPayloadTelemetry(telemetry.getPayloadTelemetry())));
 
         return builder.build();
     }
 
-    // Timestamp conversion utilities
-
-    public LocalDateTime toLocalDateTime(Timestamp timestamp) {
-        if (timestamp == null) {
+    private AssetTelemetry.PositionState mapPositionState(AssetTelemetryData.PositionState positionState) {
+        if (positionState == null) {
             return null;
         }
-        Instant instant = Instant.ofEpochSecond(timestamp.getSeconds(), timestamp.getNanos());
-        return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+
+        AssetTelemetry.PositionState.Builder builder = AssetTelemetry.PositionState.newBuilder();
+        setIfNotNull(builder::setGpsNumber, positionState.getGpsNumber());
+        setIfNotNull(builder::setRtkNumber, positionState.getRtkNumber());
+        setIfNotNull(builder::setQuality, positionState.getQuality());
+        return builder.build();
+    }
+
+    private AssetTelemetry.AssetSubAssetInformation mapSubAssetInformation(
+            AssetTelemetryData.SubAssetInformation subAssetInformation) {
+        if (subAssetInformation == null) {
+            return null;
+        }
+
+        AssetTelemetry.AssetSubAssetInformation.Builder builder =
+                AssetTelemetry.AssetSubAssetInformation.newBuilder();
+        setIfNotNull(builder::setSn, subAssetInformation.getSn());
+        setIfNotNull(builder::setModel, subAssetInformation.getModel());
+        setIfNotNull(builder::setPaired, subAssetInformation.getPaired());
+        setIfNotNull(builder::setOnline, subAssetInformation.getOnline());
+        return builder.build();
+    }
+
+    private AssetTelemetry.AssetNetworkInformation mapNetworkInformation(
+            AssetTelemetryData.NetworkInformation networkInformation) {
+        if (networkInformation == null) {
+            return null;
+        }
+
+        AssetTelemetry.AssetNetworkInformation.Builder builder = AssetTelemetry.AssetNetworkInformation.newBuilder();
+        setIfNotNull(builder::setType, networkInformation.getType());
+        setIfNotNull(builder::setRate, networkInformation.getRate());
+        setIfNotNull(builder::setQuality, networkInformation.getQuality());
+        return builder.build();
+    }
+
+    private AssetTelemetry.AssetWirelessLinkInformation mapWirelessLinkInformation(
+            AssetTelemetryData.WirelessLinkInformation wirelessLinkInformation) {
+        if (wirelessLinkInformation == null) {
+            return null;
+        }
+
+        AssetTelemetry.AssetWirelessLinkInformation.Builder builder =
+                AssetTelemetry.AssetWirelessLinkInformation.newBuilder();
+        setIfNotNull(builder::setSdrFreqBand, wirelessLinkInformation.getSdrFreqBand());
+        setIfNotNull(builder::setSdrLinkState, wirelessLinkInformation.getSdrLinkState());
+        setIfNotNull(builder::setSdrQuality, wirelessLinkInformation.getSdrQuality());
+        setIfNotNull(builder::setDongleNumber, wirelessLinkInformation.getDongleNumber());
+        setIfNotNull(builder::setFourthGenerationFreqBand, wirelessLinkInformation.getFourthGenerationFreqBand());
+        setIfNotNull(builder::setFourthGenerationLinkState, wirelessLinkInformation.getFourthGenerationLinkState());
+        setIfNotNull(builder::setFourthGenerationQuality, wirelessLinkInformation.getFourthGenerationQuality());
+        setIfNotNull(builder::setFourthGenerationGndQuality, wirelessLinkInformation.getFourthGenerationGndQuality());
+        setIfNotNull(builder::setFourthGenerationUavQuality, wirelessLinkInformation.getFourthGenerationUavQuality());
+        setIfNotNull(builder::setLinkWorkmode, wirelessLinkInformation.getLinkWorkmode());
+        return builder.build();
+    }
+
+
+    private AssetTelemetry.AssetSdrState mapSdrState(AssetTelemetryData.SdrState sdrState) {
+        if (sdrState == null) {
+            return null;
+        }
+        AssetTelemetry.AssetSdrState.Builder builder = AssetTelemetry.AssetSdrState.newBuilder();
+        setIfNotNull(builder::setDownQuality, sdrState.getDownQuality());
+        setIfNotNull(builder::setUpQuality, sdrState.getUpQuality());
+        setIfNotNull(builder::setFrequencyBand, sdrState.getFrequencyBand());
+        return  builder.build();
+    }
+
+    private AssetTelemetry.AssetAirConditioner mapAirConditioner(
+            AssetTelemetryData.AirConditioner airConditioner) {
+        if (airConditioner == null) {
+            return null;
+        }
+
+        AssetTelemetry.AssetAirConditioner.Builder builder = AssetTelemetry.AssetAirConditioner.newBuilder();
+        setIfNotNull(builder::setState, airConditioner.getState());
+        setIfNotNull(builder::setSwitchTime, airConditioner.getSwitchTime());
+        return builder.build();
+    }
+
+    private SubAssetTelemetry.SubAssetBatteryInformation mapBatteryInformation(
+            SubAssetTelemetryData.BatteryInformation batteryInformation) {
+        if (batteryInformation == null) {
+            return null;
+        }
+
+        SubAssetTelemetry.SubAssetBatteryInformation.Builder builder =
+                SubAssetTelemetry.SubAssetBatteryInformation.newBuilder();
+        setIfNotNull(builder::setPercentage, batteryInformation.getPercentage());
+        setIfNotNull(builder::setRemainingTime, batteryInformation.getRemainingTime());
+        setIfNotNull(builder::setReturnToHomePower, batteryInformation.getReturnToHomePower());
+        return builder.build();
+    }
+
+    private PayloadTelemetry mapPayloadTelemetry(SubAssetTelemetryData.PayloadTelemetry payloadTelemetry) {
+        if (payloadTelemetry == null) {
+            return null;
+        }
+
+        PayloadTelemetry.Builder builder = PayloadTelemetry.newBuilder();
+        setIfNotNull(builder::setId, payloadTelemetry.getId());
+        setIfNotNull(builder::setName, payloadTelemetry.getName());
+        setIfNotNull(builder::setTimestamp, MapperSupport.toTimestamp(payloadTelemetry.getTimestamp()));
+        setIfNotNull(builder::setCameraData, mapCameraData(payloadTelemetry.getCameraData()));
+        setIfNotNull(builder::setRangeFinderData, mapRangeFinderData(payloadTelemetry.getRangeFinderData()));
+        setIfNotNull(builder::setSensorData, mapSensorData(payloadTelemetry.getSensorData()));
+        return builder.build();
+    }
+
+    private PayloadTelemetry.CameraData mapCameraData(SubAssetTelemetryData.CameraData cameraData) {
+        if (cameraData == null) {
+            return null;
+        }
+
+        PayloadTelemetry.CameraData.Builder builder = PayloadTelemetry.CameraData.newBuilder();
+        setIfNotNull(builder::setCurrentLens, cameraData.getCurrentLens());
+        setIfNotNull(builder::setGimbalPitch, cameraData.getGimbalPitch());
+        setIfNotNull(builder::setGimbalYaw, cameraData.getGimbalYaw());
+        setIfNotNull(builder::setGimbalRoll, cameraData.getGimbalRoll());
+        setIfNotNull(builder::setZoomFactor, cameraData.getZoomFactor());
+        return builder.build();
+    }
+
+    private PayloadTelemetry.RangeFinderData mapRangeFinderData(SubAssetTelemetryData.RangeFinderData rangeFinderData) {
+        if (rangeFinderData == null) {
+            return null;
+        }
+
+        PayloadTelemetry.RangeFinderData.Builder builder = PayloadTelemetry.RangeFinderData.newBuilder();
+        setIfNotNull(builder::setTargetLatitude, rangeFinderData.getTargetLatitude());
+        setIfNotNull(builder::setTargetLongitude, rangeFinderData.getTargetLongitude());
+        setIfNotNull(builder::setTargetDistance, rangeFinderData.getTargetDistance());
+        setIfNotNull(builder::setTargetAltitude, rangeFinderData.getTargetAltitude());
+        return builder.build();
+    }
+
+    private PayloadTelemetry.SensorData mapSensorData(SubAssetTelemetryData.SensorData sensorData) {
+        if (sensorData == null) {
+            return null;
+        }
+
+        PayloadTelemetry.SensorData.Builder builder = PayloadTelemetry.SensorData.newBuilder();
+        setIfNotNull(builder::setTargetTemperature, sensorData.getTargetTemperature());
+        return builder.build();
+    }
+
+    private AssetTelemetryData.PositionState mapPositionState(AssetTelemetry.PositionState positionState) {
+        if (positionState == null) {
+            return null;
+        }
+
+        AssetTelemetryData.PositionState.PositionStateBuilder builder = AssetTelemetryData.PositionState.builder();
+        setIfNotNull(builder::gpsNumber, valueIf(positionState::hasGpsNumber, positionState::getGpsNumber));
+        setIfNotNull(builder::rtkNumber, valueIf(positionState::hasRtkNumber, positionState::getRtkNumber));
+        setIfNotNull(builder::quality, valueIf(positionState::hasQuality, positionState::getQuality));
+        return builder.build();
+    }
+
+    private AssetTelemetryData.SubAssetInformation mapSubAssetInformation(
+            AssetTelemetry.AssetSubAssetInformation subAssetInformation) {
+        if (subAssetInformation == null) {
+            return null;
+        }
+
+        AssetTelemetryData.SubAssetInformation.SubAssetInformationBuilder builder =
+                AssetTelemetryData.SubAssetInformation.builder();
+        setIfNotNull(builder::sn, valueIf(subAssetInformation::hasSn, subAssetInformation::getSn));
+        setIfNotNull(builder::model, valueIf(subAssetInformation::hasModel, subAssetInformation::getModel));
+        setIfNotNull(builder::paired, valueIf(subAssetInformation::hasPaired, subAssetInformation::getPaired));
+        setIfNotNull(builder::online, valueIf(subAssetInformation::hasOnline, subAssetInformation::getOnline));
+        return builder.build();
+    }
+
+    private AssetTelemetryData.NetworkInformation mapNetworkInformation(
+            AssetTelemetry.AssetNetworkInformation networkInformation) {
+        if (networkInformation == null) {
+            return null;
+        }
+
+        AssetTelemetryData.NetworkInformation.NetworkInformationBuilder builder =
+                AssetTelemetryData.NetworkInformation.builder();
+        setIfNotNull(builder::type, valueIf(networkInformation::hasType, networkInformation::getType));
+        setIfNotNull(builder::rate, valueIf(networkInformation::hasRate, networkInformation::getRate));
+        setIfNotNull(builder::quality, valueIf(networkInformation::hasQuality, networkInformation::getQuality));
+        return builder.build();
+    }
+
+    private AssetTelemetryData.WirelessLinkInformation mapWirelessLinkInformation(
+            AssetTelemetry.AssetWirelessLinkInformation wirelessLinkInformation) {
+        if (wirelessLinkInformation == null) {
+            return null;
+        }
+
+        AssetTelemetryData.WirelessLinkInformation.WirelessLinkInformationBuilder builder =
+                AssetTelemetryData.WirelessLinkInformation.builder();
+        setIfNotNull(builder::sdrFreqBand, valueIf(wirelessLinkInformation::hasSdrFreqBand, wirelessLinkInformation::getSdrFreqBand));
+        setIfNotNull(builder::sdrLinkState, valueIf(wirelessLinkInformation::hasSdrLinkState, wirelessLinkInformation::getSdrLinkState));
+        setIfNotNull(builder::sdrQuality, valueIf(wirelessLinkInformation::hasSdrQuality, wirelessLinkInformation::getSdrQuality));
+        setIfNotNull(builder::dongleNumber, valueIf(wirelessLinkInformation::hasDongleNumber, wirelessLinkInformation::getDongleNumber));
+        setIfNotNull(builder::fourthGenerationFreqBand, valueIf(wirelessLinkInformation::hasFourthGenerationFreqBand, wirelessLinkInformation::getFourthGenerationFreqBand));
+        setIfNotNull(builder::fourthGenerationLinkState, valueIf(wirelessLinkInformation::hasFourthGenerationLinkState, wirelessLinkInformation::getFourthGenerationLinkState));
+        setIfNotNull(builder::fourthGenerationQuality, valueIf(wirelessLinkInformation::hasFourthGenerationQuality, wirelessLinkInformation::getFourthGenerationQuality));
+        setIfNotNull(builder::fourthGenerationGndQuality, valueIf(wirelessLinkInformation::hasFourthGenerationGndQuality, wirelessLinkInformation::getFourthGenerationGndQuality));
+        setIfNotNull(builder::fourthGenerationUavQuality, valueIf(wirelessLinkInformation::hasFourthGenerationUavQuality, wirelessLinkInformation::getFourthGenerationUavQuality));
+        setIfNotNull(builder::linkWorkmode, valueIf(wirelessLinkInformation::hasLinkWorkmode, wirelessLinkInformation::getLinkWorkmode));
+        return builder.build();
+    }
+
+    private AssetTelemetryData.AirConditioner mapAirConditioner(
+            AssetTelemetry.AssetAirConditioner airConditioner) {
+        if (airConditioner == null) {
+            return null;
+        }
+
+        AssetTelemetryData.AirConditioner.AirConditionerBuilder builder = AssetTelemetryData.AirConditioner.builder();
+        setIfNotNull(builder::state, valueIf(airConditioner::hasState, airConditioner::getState));
+        setIfNotNull(builder::switchTime, valueIf(airConditioner::hasSwitchTime, airConditioner::getSwitchTime));
+        return builder.build();
+    }
+
+    private SubAssetTelemetryData.BatteryInformation mapBatteryInformation(
+            SubAssetTelemetry.SubAssetBatteryInformation batteryInformation) {
+        if (batteryInformation == null) {
+            return null;
+        }
+
+        SubAssetTelemetryData.BatteryInformation.BatteryInformationBuilder builder =
+                SubAssetTelemetryData.BatteryInformation.builder();
+        setIfNotNull(builder::percentage, valueIf(batteryInformation::hasPercentage, batteryInformation::getPercentage));
+        setIfNotNull(builder::remainingTime, valueIf(batteryInformation::hasRemainingTime, batteryInformation::getRemainingTime));
+        setIfNotNull(builder::returnToHomePower, valueIf(batteryInformation::hasReturnToHomePower, batteryInformation::getReturnToHomePower));
+        return builder.build();
+    }
+
+    private SubAssetTelemetryData.PayloadTelemetry mapPayloadTelemetry(PayloadTelemetry payloadTelemetry) {
+        if (payloadTelemetry == null) {
+            return null;
+        }
+
+        SubAssetTelemetryData.PayloadTelemetry.PayloadTelemetryBuilder builder =
+                SubAssetTelemetryData.PayloadTelemetry.builder();
+        setIfNotNull(builder::id, payloadTelemetry.getId());
+        setIfNotNull(builder::name, payloadTelemetry.getName());
+        setIfNotNull(builder::timestamp, valueIf(payloadTelemetry::hasTimestamp, () -> MapperSupport.toLocalDateTime(payloadTelemetry.getTimestamp())));
+        setIfNotNull(builder::cameraData, mapCameraData(payloadTelemetry.getCameraData()));
+        setIfNotNull(builder::rangeFinderData, mapRangeFinderData(payloadTelemetry.getRangeFinderData()));
+        setIfNotNull(builder::sensorData, mapSensorData(payloadTelemetry.getSensorData()));
+        return builder.build();
+    }
+
+    private SubAssetTelemetryData.CameraData mapCameraData(PayloadTelemetry.CameraData cameraData) {
+        if (cameraData == null) {
+            return null;
+        }
+
+        SubAssetTelemetryData.CameraData.CameraDataBuilder builder = SubAssetTelemetryData.CameraData.builder();
+        setIfNotNull(builder::currentLens, valueIf(cameraData::hasCurrentLens, cameraData::getCurrentLens));
+        setIfNotNull(builder::gimbalPitch, valueIf(cameraData::hasGimbalPitch, cameraData::getGimbalPitch));
+        setIfNotNull(builder::gimbalYaw, valueIf(cameraData::hasGimbalYaw, cameraData::getGimbalYaw));
+        setIfNotNull(builder::gimbalRoll, valueIf(cameraData::hasGimbalRoll, cameraData::getGimbalRoll));
+        setIfNotNull(builder::zoomFactor, valueIf(cameraData::hasZoomFactor, cameraData::getZoomFactor));
+        return builder.build();
+    }
+
+    private SubAssetTelemetryData.RangeFinderData mapRangeFinderData(PayloadTelemetry.RangeFinderData rangeFinderData) {
+        if (rangeFinderData == null) {
+            return null;
+        }
+
+        SubAssetTelemetryData.RangeFinderData.RangeFinderDataBuilder builder = SubAssetTelemetryData.RangeFinderData.builder();
+        setIfNotNull(builder::targetLatitude, valueIf(rangeFinderData::hasTargetLatitude, rangeFinderData::getTargetLatitude));
+        setIfNotNull(builder::targetLongitude, valueIf(rangeFinderData::hasTargetLongitude, rangeFinderData::getTargetLongitude));
+        setIfNotNull(builder::targetDistance, valueIf(rangeFinderData::hasTargetDistance, rangeFinderData::getTargetDistance));
+        setIfNotNull(builder::targetAltitude, valueIf(rangeFinderData::hasTargetAltitude, rangeFinderData::getTargetAltitude));
+        return builder.build();
+    }
+
+    private SubAssetTelemetryData.SensorData mapSensorData(PayloadTelemetry.SensorData sensorData) {
+        if (sensorData == null) {
+            return null;
+        }
+
+        SubAssetTelemetryData.SensorData.SensorDataBuilder builder = SubAssetTelemetryData.SensorData.builder();
+        setIfNotNull(builder::targetTemperature, valueIf(sensorData::hasTargetTemperature, sensorData::getTargetTemperature));
+        return builder.build();
+    }
+
+    private static <T> void setIfNotNull(Consumer<T> setter, T value) {
+        MapperSupport.set(setter, value);
+    }
+
+    private static <T> T valueIf(BooleanSupplier hasValue, Supplier<T> supplier) {
+        return hasValue.getAsBoolean() ? supplier.get() : null;
+    }
+
+    public LocalDateTime toLocalDateTime(Timestamp timestamp) {
+        return MapperSupport.toLocalDateTime(timestamp);
     }
 
     public Timestamp toTimestamp(LocalDateTime localDateTime) {
-        if (localDateTime == null) {
-            return null;
-        }
-        Instant instant = localDateTime.atZone(ZoneId.systemDefault()).toInstant();
-        return Timestamp.newBuilder()
-                .setSeconds(instant.getEpochSecond())
-                .setNanos(instant.getNano())
-                .build();
+        return MapperSupport.toTimestamp(localDateTime);
     }
 }
