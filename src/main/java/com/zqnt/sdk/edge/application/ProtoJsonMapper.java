@@ -9,7 +9,6 @@ import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.common.proto.*;
-import com.zqnt.utils.edge.sdk.proto.*;
 import com.zqnt.utils.missionautonomy.domains.*;
 import com.zqnt.utils.missionautonomy.domains.config.TaskConfigTemplate;
 
@@ -33,7 +32,7 @@ public class ProtoJsonMapper {
         return coordinates(proto.getLatitude(), proto.getLongitude(), proto.getAltitude());
     }
 
-    public TakeOffRequest map(EdgeTakeOffRequest request) {
+    public TakeOffRequest mapTakeOff(CoordinateCommandRequest request) {
         if (request == null)
             return null;
         TakeOffRequest.TakeOffRequestBuilder builder = TakeOffRequest.builder();
@@ -41,11 +40,11 @@ public class ProtoJsonMapper {
         apply(builder, TakeOffRequest.TakeOffRequestBuilder::tid, request.getBase().getTid());
         return builder
                 .coordinates(map(request.getRequest()))
-                .externalId(request.getExternalId())
+                .externalId(request.getBase().getExternalId())
                 .build();
     }
 
-    public GoToRequest map(EdgeGoToRequest request) {
+    public GoToRequest mapGoTo(CoordinateCommandRequest request) {
         if (request == null)
             return null;
         GoToRequest.GoToRequestBuilder builder = GoToRequest.builder();
@@ -53,20 +52,22 @@ public class ProtoJsonMapper {
         apply(builder, GoToRequest.GoToRequestBuilder::tid, request.getBase().getTid());
         return builder
                 .coordinates(map(request.getRequest()))
-                .externalId(request.getExternalId())
+                .externalId(request.getBase().getExternalId())
                 .build();
     }
 
-    public ReturnToHomeRequest map(EdgeReturnToHomeRequest request) {
+    public ReturnToHomeRequest map(ReturnToHomeCommandRequest request) {
         if (request == null)
             return null;
         ReturnToHomeRequest.ReturnToHomeRequestBuilder builder = ReturnToHomeRequest.builder();
         apply(builder, ReturnToHomeRequest.ReturnToHomeRequestBuilder::sn, request.getBase().getSn());
         apply(builder, ReturnToHomeRequest.ReturnToHomeRequestBuilder::tid, request.getBase().getTid());
-        return builder.build();
+        return builder
+                .altitude(valueOrNull(request.hasRequest() && request.getRequest().hasAltitude(), request.getRequest().getAltitude()))
+                .build();
     }
 
-    public LiveStreamStartRequest map(EdgeStartLiveStreamRequest request) {
+    public LiveStreamStartRequest map(LiveStreamStartCommandRequest request) {
         if (request == null)
             return null;
         LiveStreamStartRequest.LiveStreamStartRequestBuilder builder = LiveStreamStartRequest.builder();
@@ -79,7 +80,7 @@ public class ProtoJsonMapper {
                 .build();
     }
 
-    public LiveStreamStopRequest map(EdgeStopLiveStreamRequest request) {
+    public LiveStreamStopRequest map(LiveStreamStopCommandRequest request) {
         if (request == null)
             return null;
         LiveStreamStopRequest.LiveStreamStopRequestBuilder builder = LiveStreamStopRequest.builder();
@@ -90,28 +91,28 @@ public class ProtoJsonMapper {
                 .build();
     }
 
-    public ChangeLensRequest map(EdgeChangeCameraLensRequest request) {
+    public ChangeLensRequest map(ChangeCameraLensCommandRequest request) {
         if (request == null)
             return null;
         ChangeLensRequest.ChangeLensRequestBuilder builder = ChangeLensRequest.builder();
         apply(builder, ChangeLensRequest.ChangeLensRequestBuilder::sn, request.getBase().getSn());
         return builder
-                .lens(request.getRequest().getLens())
+                .lens(valueOrNull(request.hasRequest() && request.getRequest().hasLens(), request.getRequest().getLens()))
                 .build();
     }
 
-    public ChangeZoomRequest map(EdgeChangeCameraZoomRequest request) {
+    public ChangeZoomRequest map(ChangeCameraZoomCommandRequest request) {
         if (request == null)
             return null;
         ChangeZoomRequest.ChangeZoomRequestBuilder builder = ChangeZoomRequest.builder();
         apply(builder, ChangeZoomRequest.ChangeZoomRequestBuilder::sn, request.getBase().getSn());
         return builder
-                .lens(request.getRequest().getLens())
-                .zoom((float) request.getRequest().getZoom())
+                .lens(valueOrNull(request.hasRequest() && request.getRequest().hasLens(), request.getRequest().getLens()))
+                .zoom(valueOrNull(request.hasRequest() && request.getRequest().hasZoom(), (float) request.getRequest().getZoom()))
                 .build();
     }
 
-    public LookAtRequest map(EdgeLookAtRequest request) {
+    public LookAtRequest map(LookAtCommandRequest request) {
         if (request == null)
             return null;
         LookAtRequest.LookAtRequestBuilder builder = LookAtRequest.builder();
@@ -120,12 +121,12 @@ public class ProtoJsonMapper {
                 .latitude(request.getRequest().getLatitude())
                 .longitude(request.getRequest().getLongitude())
                 .altitude((float) request.getRequest().getAltitude())
-                .locked(request.getLocked())
-                .payloadIndex(request.getPayloadIndex())
+                .locked(valueOrNull(request.hasLocked(), request.getLocked()))
+                .payloadIndex(valueOrNull(request.hasPayloadIndex(), request.getPayloadIndex()))
                 .build();
     }
 
-    public TakePhotoRequest map(EdgeTakePhotoRequest request) {
+    public TakePhotoRequest map(EmptyCommandRequest request) {
         if (request == null)
             return null;
         TakePhotoRequest.TakePhotoRequestBuilder builder = TakePhotoRequest.builder();
@@ -133,17 +134,17 @@ public class ProtoJsonMapper {
         return builder.build();
     }
 
-    public ManualControlInput map(EdgeManualControlInputRequest request) {
+    public ManualControlInput map(ManualControlInputCommandRequest request) {
         if (request == null)
             return null;
         ManualControlInput.ManualControlInputBuilder builder = ManualControlInput.builder();
         apply(builder, ManualControlInput.ManualControlInputBuilder::sn, request.getBase().getSn());
         return builder
-                .roll(request.getRequest().getRoll())
-                .pitch(request.getRequest().getPitch())
-                .yaw(request.getRequest().getYaw())
-                .throttle(request.getRequest().getThrottle())
-                .gimbalPitch(request.getRequest().getGimbalPitch())
+                .roll(valueOrNull(request.hasRequest() && request.getRequest().hasRoll(), request.getRequest().getRoll()))
+                .pitch(valueOrNull(request.hasRequest() && request.getRequest().hasPitch(), request.getRequest().getPitch()))
+                .yaw(valueOrNull(request.hasRequest() && request.getRequest().hasYaw(), request.getRequest().getYaw()))
+                .throttle(valueOrNull(request.hasRequest() && request.getRequest().hasThrottle(), request.getRequest().getThrottle()))
+                .gimbalPitch(valueOrNull(request.hasRequest() && request.getRequest().hasGimbalPitch(), request.getRequest().getGimbalPitch()))
                 .build();
     }
 
@@ -162,9 +163,8 @@ public class ProtoJsonMapper {
         set(builder::vendor, proto.getVendor());
         set(builder::model, proto.getModel());
         set(builder::connection, proto.getConnection());
-        set(builder::connectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
-        set(builder::port, valueOrNull(proto.hasPort(), proto.getPort()));
-        set(builder::liveStreamServer, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
+        set(builder::systemConnectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
+        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
         set(builder::externalDeviceType, valueOrNull(proto.hasExternalDeviceType(), proto.getExternalDeviceType()));
         set(builder::streamUrlPredefined, valueOrNull(proto.hasStreamUrlPredefined(), proto.getStreamUrlPredefined()));
         set(builder::externalDeviceSubType, valueOrNull(proto.hasExternalDeviceSubType(), proto.getExternalDeviceSubType()));
@@ -185,10 +185,9 @@ public class ProtoJsonMapper {
         set(builder::setType, dto.getType());
         set(builder::setVendor, dto.getVendor());
         set(builder::setConnection, dto.getConnection());
-        set(builder::setConnectionString, dto.getConnectionString());
+        set(builder::setConnectionString, dto.getSystemConnectionString());
         set(builder::setModel, dto.getModel());
-        set(builder::setPort, dto.getPort());
-        set(builder::setLiveStreamServer, dto.getLiveStreamServer());
+        set(builder::setLiveStreamServer, dto.getLiveStreamPushUrl());
         set(builder::setStreamUrlPredefined, dto.getStreamUrlPredefined());
         set(builder::setExternalDeviceType, dto.getExternalDeviceType());
         set(builder::setExternalDeviceSubType, dto.getExternalDeviceSubType());
@@ -210,8 +209,8 @@ public class ProtoJsonMapper {
         set(builder::vendor, proto.getVendor());
         set(builder::connection, proto.getConnection());
         set(builder::model, proto.getModel());
-        set(builder::connectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
-        set(builder::liveStreamServer, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
+        set(builder::systemConnectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
+        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
         set(builder::externalId, valueOrNull(proto.hasExternalId(), proto.getExternalId()));
         set(builder::externalDeviceType, valueOrNull(proto.hasExternalDeviceType(), proto.getExternalDeviceType()));
         set(builder::externalDeviceSubType, valueOrNull(proto.hasExternalDeviceSubType(), proto.getExternalDeviceSubType()));
@@ -234,8 +233,8 @@ public class ProtoJsonMapper {
         set(builder::setVendor, dto.getVendor());
         set(builder::setConnection, dto.getConnection());
         set(builder::setModel, dto.getModel());
-        set(builder::setConnectionString, dto.getConnectionString());
-        set(builder::setLiveStreamServer, dto.getLiveStreamServer());
+        set(builder::setConnectionString, dto.getSystemConnectionString());
+        set(builder::setLiveStreamServer, dto.getLiveStreamPushUrl());
         set(builder::setExternalId, dto.getExternalId());
         set(builder::setExternalDeviceType, dto.getExternalDeviceType());
         set(builder::setExternalDeviceSubType, dto.getExternalDeviceSubType());
@@ -286,7 +285,6 @@ public class ProtoJsonMapper {
         set(builder::geoJson, valueOrNull(proto.hasGeoJson(), proto.getGeoJson()));
         set(builder::startDate, valueOrNull(proto.hasStartDate(), toLocalDateTime(proto.getStartDate())));
         set(builder::endDate, valueOrNull(proto.hasEndDate(), toLocalDateTime(proto.getEndDate())));
-        set(builder::updatedUser, valueOrNull(proto.hasUpdatedUser(), proto.getUpdatedUser()));
         // Note: assignedAssets Set<String> would need proto repeated field mapping if
         // available
 
@@ -308,7 +306,7 @@ public class ProtoJsonMapper {
         set(builder::setGeoJson, dto.getGeoJson());
         set(builder::setStartDate, valueOrNull(dto.getStartDate() != null, toTimestamp(dto.getStartDate())));
         set(builder::setEndDate, valueOrNull(dto.getEndDate() != null, toTimestamp(dto.getEndDate())));
-        set(builder::setUpdatedUser, dto.getUpdatedUser());
+        set(builder::setUpdatedUser, dto.getModifiedFrom());
         // Note: assignedAssets Set<String> would need proto repeated field mapping if
         // available
 

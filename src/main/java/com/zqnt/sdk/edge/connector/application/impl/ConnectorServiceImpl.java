@@ -8,6 +8,19 @@ import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.missionautonomy.domains.*;
+import com.zqnt.utils.workflow.proto.CreateMissionRequest;
+import com.zqnt.utils.workflow.proto.CreateSchedulerRequest;
+import com.zqnt.utils.workflow.proto.CreateTaskRequest;
+import com.zqnt.utils.workflow.proto.DeleteMissionRequest;
+import com.zqnt.utils.workflow.proto.DeleteSchedulerRequest;
+import com.zqnt.utils.workflow.proto.DeleteTaskRequest;
+import com.zqnt.utils.workflow.proto.GetMissionRequest;
+import com.zqnt.utils.workflow.proto.GetSchedulerRequest;
+import com.zqnt.utils.workflow.proto.GetTaskByFlightIdRequest;
+import com.zqnt.utils.workflow.proto.GetTaskRequest;
+import com.zqnt.utils.workflow.proto.UpdateMissionRequest;
+import com.zqnt.utils.workflow.proto.UpdateSchedulerRequest;
+import com.zqnt.utils.workflow.proto.UpdateTaskRequest;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
@@ -157,13 +170,11 @@ public class ConnectorServiceImpl implements ConnectorService {
 
 	@Override
 	public CompletableFuture<AssetDTO> getAssetBySn(String sn) {
-		var request = ConnectorGetAssetBySnRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
+		var request = RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setSn(sn)
 						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.build();
+						.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::getAssetBySn)
 				.thenApply(response -> {
@@ -171,7 +182,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Asset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDto());
+					return protoJsonMapper.map(response.getAsset());
 				});
 	}
 
@@ -179,10 +190,10 @@ public class ConnectorServiceImpl implements ConnectorService {
 	public CompletableFuture<AssetDTO> getAssetById(String id) {
 		var request = ConnectorGetAssetByIdRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
-						.setTimestamp(ProtobufHelpers.now())
+				.setTimestamp(ProtobufHelpers.now())
 						.setTid(UUID.randomUUID().toString())
 						.build())
-				.setId(id)
+				.setAssetId(id)
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::getAssetById)
@@ -191,19 +202,17 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Asset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDto());
+					return protoJsonMapper.map(response.getAsset());
 				});
 	}
 
 	@Override
 	public CompletableFuture<SubAssetDTO> getSubAssetBySn(String sn) {
-		var request = ConnectorGetSubAssetBySnRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
+		var request = RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setSn(sn)
 						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.build();
+						.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::getSubAssetBySn)
 				.thenApply(response -> {
@@ -211,7 +220,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting SubAsset from Connector Service");
 						return null;
 					}
-					return protoJsonMapper.map(response.getSubAssetDto());
+					return protoJsonMapper.map(response.getSubAsset());
 				});
 	}
 
@@ -221,10 +230,10 @@ public class ConnectorServiceImpl implements ConnectorService {
 				.setBase(RequestBase.newBuilder()
 						.setSn(assetDTO.getSn())
 						.setTimestamp(ProtobufHelpers.now())
-						.setTid(UUID.randomUUID().toString())
+				.setTid(UUID.randomUUID().toString())
 						.build())
 				.setAssetId(id)
-				.setAssetDto(protoJsonMapper.map(assetDTO))
+				.setAsset(protoJsonMapper.map(assetDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateAsset)
@@ -233,7 +242,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating asset: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDto());
+					return protoJsonMapper.map(response.getAsset());
 				});
 	}
 
@@ -245,7 +254,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						.setTimestamp(ProtobufHelpers.now())
 						.setSn(assetDTO.getSn())
 						.build())
-				.setAssetDto(protoJsonMapper.map(assetDTO))
+				.setAsset(protoJsonMapper.map(assetDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::registerAsset)
@@ -254,20 +263,19 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error registering asset: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getAssetDto());
+					return protoJsonMapper.map(response.getAsset());
 				});
 	}
 
 	@Override
 	public CompletableFuture<Boolean> deRegisterAsset(String id) {
-		var request = ConnectorDeRegisterAssetRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
+		var request = RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
+						.setAssetId(id)
 						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.build();
+						.build();
 
-		return callAsyncWithRetry(request, connectorServiceStub::deRegisterAsset)
+		return callAsyncWithRetry(request, connectorServiceStub::deregisterAsset)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error deregistering asset: {}", response.getError());
@@ -279,7 +287,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 
 	@Override
 	public CompletableFuture<MissionDTO> getMissionById(String id) {
-		var request = ConnectorGetMissionRequest.newBuilder()
+		var request = GetMissionRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTimestamp(ProtobufHelpers.now())
 						.setTid(UUID.randomUUID().toString())
@@ -293,18 +301,18 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				});
 	}
 
 	@Override
 	public CompletableFuture<MissionDTO> createMission(MissionDTO missionDTO) {
-		var request = ConnectorCreateMissionRequest.newBuilder()
+		var request = CreateMissionRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setMissionDto(protoJsonMapper.map(missionDTO))
+				.setMission(protoJsonMapper.map(missionDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createMission)
@@ -313,19 +321,19 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				});
 	}
 
 	@Override
 	public CompletableFuture<MissionDTO> updateMission(String id, MissionDTO missionDTO) {
-		var request = ConnectorUpdateMissionRequest.newBuilder()
+		var request = UpdateMissionRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setMissionId(id)
-				.setMissionDto(protoJsonMapper.map(missionDTO))
+				.setMission(protoJsonMapper.map(missionDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateMission)
@@ -334,13 +342,13 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				});
 	}
 
 	@Override
 	public CompletableFuture<Boolean> deleteMission(String id) {
-		var request = ConnectorDeleteMissionRequest.newBuilder()
+		var request = DeleteMissionRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
@@ -360,7 +368,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 
 	@Override
 	public CompletableFuture<TaskDTO> getTaskById(String id) {
-		var request = ConnectorGetTaskRequest.newBuilder()
+		var request = GetTaskRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
@@ -374,18 +382,18 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				});
 	}
 
 	@Override
 	public CompletableFuture<TaskDTO> createTask(TaskDTO taskDTO) {
-		var request = ConnectorCreateTaskRequest.newBuilder()
+		var request = CreateTaskRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setTaskDto(protoJsonMapper.map(taskDTO))
+				.setTask(protoJsonMapper.map(taskDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createTask)
@@ -394,19 +402,19 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				});
 	}
 
 	@Override
 	public CompletableFuture<TaskDTO> updateTask(String id, TaskDTO taskDTO) {
-		var request = ConnectorUpdateTaskRequest.newBuilder()
+		var request = UpdateTaskRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setTaskId(id)
-				.setTaskDto(protoJsonMapper.map(taskDTO))
+				.setTask(protoJsonMapper.map(taskDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateTask)
@@ -415,13 +423,13 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				});
 	}
 
 	@Override
 	public CompletableFuture<Boolean> deleteTask(String id) {
-		var request = ConnectorDeleteTaskRequest.newBuilder()
+		var request = DeleteTaskRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
@@ -441,12 +449,12 @@ public class ConnectorServiceImpl implements ConnectorService {
 
 	@Override
 	public CompletableFuture<TaskDTO> getTaskByFlightId(String flightId) {
-		var request = ConnectorGetTaskRequest.newBuilder()
+		var request = GetTaskByFlightIdRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setTaskId(flightId)
+				.setFlightId(flightId)
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::getTaskByFlightId)
@@ -455,13 +463,13 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting task by flight id: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				});
 	}
 
 	@Override
 	public CompletableFuture<SchedulerDTO> getSchedulerById(String id) {
-		var request = ConnectorGetSchedulerRequest.newBuilder()
+		var request = GetSchedulerRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
@@ -475,18 +483,18 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDto());
+					return protoJsonMapper.map(response.getScheduler());
 				});
 	}
 
 	@Override
 	public CompletableFuture<SchedulerDTO> createScheduler(SchedulerDTO schedulerDTO) {
-		var request = ConnectorCreateSchedulerRequest.newBuilder()
+		var request = CreateSchedulerRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
-				.setSchedulerDto(protoJsonMapper.map(schedulerDTO))
+				.setScheduler(protoJsonMapper.map(schedulerDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::createScheduler)
@@ -495,19 +503,19 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error creating scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDto());
+					return protoJsonMapper.map(response.getScheduler());
 				});
 	}
 
 	@Override
 	public CompletableFuture<SchedulerDTO> updateScheduler(String id, SchedulerDTO schedulerDTO) {
-		var request = ConnectorUpdateSchedulerRequest.newBuilder()
+		var request = UpdateSchedulerRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.setSchedulerId(id)
-				.setSchedulerDto(protoJsonMapper.map(schedulerDTO))
+				.setScheduler(protoJsonMapper.map(schedulerDTO))
 				.build();
 
 		return callAsyncWithRetry(request, connectorServiceStub::updateScheduler)
@@ -516,13 +524,13 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error updating scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDto());
+					return protoJsonMapper.map(response.getScheduler());
 				});
 	}
 
 	@Override
 	public CompletableFuture<Boolean> deleteScheduler(String id) {
-		var request = ConnectorDeleteSchedulerRequest.newBuilder()
+		var request = DeleteSchedulerRequest.newBuilder()
 				.setBase(RequestBase.newBuilder()
 						.setTid(UUID.randomUUID().toString())
 						.setTimestamp(ProtobufHelpers.now())
@@ -555,7 +563,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 						log.error("Error getting Organization: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getOrganizationDto());
+					return protoJsonMapper.map(response.getOrganization());
 				});
 	}
 

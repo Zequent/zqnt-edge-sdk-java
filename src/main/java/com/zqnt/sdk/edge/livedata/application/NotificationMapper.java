@@ -2,10 +2,11 @@ package com.zqnt.sdk.edge.livedata.application;
 
 import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
 import com.zqnt.sdk.edge.support.MapperSupport;
-import com.zqnt.utils.livedata.proto.AssetStatusEvent;
-import com.zqnt.utils.livedata.proto.OperationEvent;
-import com.zqnt.utils.livedata.proto.ProduceNotificationRequest;
-import com.zqnt.utils.livedata.proto.TaskEvent;
+import com.zqnt.utils.events.proto.AssetStatusEvent;
+import com.zqnt.utils.events.proto.NotificationEvent;
+import com.zqnt.utils.events.proto.OperationEvent;
+import com.zqnt.utils.events.proto.ProduceNotificationRequest;
+import com.zqnt.utils.events.proto.TaskEvent;
 
 /**
  * Mapper for converting notification POJO data to Proto messages and vice versa.
@@ -24,10 +25,11 @@ public class NotificationMapper {
 			data.setTimestamp(MapperSupport.toLocalDateTime(request.getBase().getTimestamp()));
 		}
 
-		switch (request.getEventCase()) {
-			case ASSET_STATUS -> data.setAssetStatusEvent(map(request.getAssetStatus()));
-			case TASK_EVENT -> data.setTaskEvent(map(request.getTaskEvent()));
-			case OPERATION_EVENT -> data.setOperationEvent(map(request.getOperationEvent()));
+		NotificationEvent event = request.getEvent();
+		switch (event.getEventCase()) {
+			case ASSET_STATUS -> data.setAssetStatusEvent(map(event.getAssetStatus()));
+			case TASK -> data.setTaskEvent(map(event.getTask()));
+			case OPERATION -> data.setOperationEvent(map(event.getOperation()));
 			default -> { /* no-op for ERROR or EVENT_NOT_SET */ }
 		}
 
@@ -43,13 +45,15 @@ public class NotificationMapper {
 				.setBase(baseBuilder.build());
 		builder.setSeverity(requestData.getSeverity());
 		builder.setEventType(requestData.getEventType());
+		NotificationEvent.Builder eventBuilder = NotificationEvent.newBuilder();
 		if (requestData.getAssetStatusEvent() != null) {
-			builder.setAssetStatus(map(requestData.getAssetStatusEvent()));
+			eventBuilder.setAssetStatus(map(requestData.getAssetStatusEvent()));
 		} else if (requestData.getTaskEvent() != null) {
-			builder.setTaskEvent(map(requestData.getTaskEvent()));
+			eventBuilder.setTask(map(requestData.getTaskEvent()));
 		} else if (requestData.getOperationEvent() != null) {
-			builder.setOperationEvent(map(requestData.getOperationEvent()));
+			eventBuilder.setOperation(map(requestData.getOperationEvent()));
 		}
+		builder.setEvent(eventBuilder.build());
 
 		return builder.build();
 	}

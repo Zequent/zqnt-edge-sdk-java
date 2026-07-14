@@ -1,21 +1,43 @@
 package com.zqnt.sdk.edge.adapter.grpc;
 
-
+import com.google.protobuf.Empty;
+import com.google.protobuf.Timestamp;
 import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
 import com.zqnt.sdk.edge.adapter.domains.CommandResult;
-import com.zqnt.sdk.edge.adapter.domains.LiveStreamStopRequest;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
+import com.zqnt.utils.common.proto.AssetCapabilitiesRequest;
+import com.zqnt.utils.common.proto.AssetCapabilitiesResponse;
+import com.zqnt.utils.common.proto.ChangeAcModeCommandRequest;
+import com.zqnt.utils.common.proto.ChangeCameraLensCommandRequest;
+import com.zqnt.utils.common.proto.ChangeCameraZoomCommandRequest;
+import com.zqnt.utils.common.proto.CloseCoverCommandRequest;
+import com.zqnt.utils.common.proto.CommandResponse;
+import com.zqnt.utils.common.proto.CoordinateCommandRequest;
+import com.zqnt.utils.common.proto.CurrentCapabilities;
+import com.zqnt.utils.common.proto.EmptyCommandRequest;
 import com.zqnt.utils.common.proto.ErrorCode;
 import com.zqnt.utils.common.proto.GlobalErrorMessage;
+import com.zqnt.utils.common.proto.LiveStreamStartCommandRequest;
+import com.zqnt.utils.common.proto.LiveStreamStopCommandRequest;
+import com.zqnt.utils.common.proto.LookAtCommandRequest;
+import com.zqnt.utils.common.proto.ManualControlCommandRequest;
+import com.zqnt.utils.common.proto.ManualControlInputCommandRequest;
+import com.zqnt.utils.common.proto.RegisterAssetCommandRequest;
 import com.zqnt.utils.common.proto.RequestBase;
-import com.zqnt.utils.edge.sdk.proto.*;
+import com.zqnt.utils.common.proto.ResponseMeta;
+import com.zqnt.utils.common.proto.ReturnToHomeCommandRequest;
+import com.zqnt.utils.common.proto.TaskCommandRequest;
+import com.zqnt.utils.common.proto.ToggleCommandRequest;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-
+import java.time.Instant;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapterServiceImplBase {
@@ -29,111 +51,73 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
-	public void takeOff(EdgeTakeOffRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("Trying to Takeoff to Edge SN :  {}", request.getBase().getSn());
-		var takeOffRequest = protoJsonMapper.map(request);
-		edgeAdapterService.takeOff(takeOffRequest)
+	public void getCapabilities(AssetCapabilitiesRequest request, StreamObserver<AssetCapabilitiesResponse> responseObserver) {
+		log.info("GetCapabilities for Edge SN: {}", request.getSn());
+		edgeAdapterService.getCapabilities(request.getSn())
 				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
+					responseObserver.onNext(AssetCapabilitiesResponse.newBuilder()
+							.setCapabilities(toProtoCapabilities(result))
+							.build());
 					responseObserver.onCompleted();
 				})
 				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
+					responseObserver.onNext(AssetCapabilitiesResponse.newBuilder()
+							.setError(toGlobalError(throwable))
+							.build());
 					responseObserver.onCompleted();
 					return null;
 				});
 	}
 
 	@Override
-	public void returnToHome(EdgeReturnToHomeRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("ReturnToHome for Edge SN: {}", request.getBase().getSn());
-		var rthRequest = protoJsonMapper.map(request);
-		edgeAdapterService.returnToHome(rthRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+	public void takeOff(CoordinateCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("TakeOff for Edge SN: {}", request.getBase().getSn());
+		handle(request.getBase(), edgeAdapterService.takeOff(protoJsonMapper.mapTakeOff(request)), responseObserver);
 	}
 
 	@Override
-	public void goTo(EdgeGoToRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void goTo(CoordinateCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("GoTo for Edge SN: {}", request.getBase().getSn());
-		var goToRequest = protoJsonMapper.map(request);
-		edgeAdapterService.goTo(goToRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.goTo(protoJsonMapper.mapGoTo(request)), responseObserver);
 	}
 
 	@Override
-	public void enterManualControl(EdgeManualControlRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void returnToHome(ReturnToHomeCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("ReturnToHome for Edge SN: {}", request.getBase().getSn());
+		handle(request.getBase(), edgeAdapterService.returnToHome(protoJsonMapper.map(request)), responseObserver);
+	}
+
+	@Override
+	public void enterManualControl(ManualControlCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("EnterManualControl for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.enterManualControl(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.enterManualControl(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public void exitManualControl(EdgeManualControlRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void exitManualControl(ManualControlCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("ExitManualControl for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.exitManualControl(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.exitManualControl(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public StreamObserver<EdgeManualControlInputRequest> manualControlInput(StreamObserver<EdgeResponse> responseObserver) {
+	public StreamObserver<ManualControlInputCommandRequest> manualControlInput(StreamObserver<CommandResponse> responseObserver) {
 		log.info("ManualControlInput stream started");
 
-		return new StreamObserver<EdgeManualControlInputRequest>() {
+		return new StreamObserver<>() {
 			private String sn;
 
-			public void onNext(EdgeManualControlInputRequest request) {
+			@Override
+			public void onNext(ManualControlInputCommandRequest request) {
 				ManualControlInput input = protoJsonMapper.map(request);
-				if (this.sn == null) {
-					this.sn = input.getSn();
-					log.info("Starting manual control input stream for SN: {}", this.sn);
+				if (sn == null) {
+					sn = input.getSn();
+					log.info("Starting manual control input stream for SN: {}", sn);
 				}
 				edgeAdapterService.manualControlInput(input)
 						.exceptionally(throwable -> {
-							log.error("Failed to process input for SN: {}", this.sn, throwable);
+							log.error("Failed to process manual input for SN: {}", sn, throwable);
 							return null;
 						});
-			}
-
-			public void onCompleted() {
-				log.info("Manual control input stream completed for SN: {}", sn);
-				// Must send a response before completing so the client's responseFuture resolves
-				String tid = java.util.UUID.randomUUID().toString();
-				RequestBase base = createErrorBase(sn != null ? sn : "", tid);
-				responseObserver.onNext(toEdgeResponse(base,
-						CommandResult.success("Manual control input session completed", tid, sn)));
-				responseObserver.onCompleted();
 			}
 
 			@Override
@@ -141,405 +125,243 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				log.error("Manual control input stream error for SN: {}", sn, t);
 				responseObserver.onError(t);
 			}
+
+			@Override
+			public void onCompleted() {
+				log.info("Manual control input stream completed for SN: {}", sn);
+				String tid = java.util.UUID.randomUUID().toString();
+				RequestBase base = createBase(sn != null ? sn : "", tid);
+				responseObserver.onNext(toCommandResponse(base,
+						CommandResult.success("Manual control input session completed", tid, sn)));
+				responseObserver.onCompleted();
+			}
 		};
 	}
 
 	@Override
-	public void lookAt(EdgeLookAtRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void lookAt(LookAtCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("LookAt for Edge SN: {}", request.getBase().getSn());
-		var lookAtRequest = protoJsonMapper.map(request);
-		edgeAdapterService.lookAt(lookAtRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.lookAt(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void takePhoto(EdgeTakePhotoRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void takePhoto(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("TakePhoto for Edge SN: {}", request.getBase().getSn());
-		var takeOffRequest = protoJsonMapper.map(request);
-		edgeAdapterService.takePhoto(takeOffRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.takePhoto(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void enableGimbalTracking(EdgeEnableGimbalTrackingRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void enableGimbalTracking(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("EnableGimbalTracking for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.enableGimbalTracking(request.getBase().getSn(), request.getEnabled())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.enableGimbalTracking(request.getBase().getSn(), request.getEnabled()), responseObserver);
 	}
 
 	@Override
-	public void openCover(EdgeOpenCoverRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void openCover(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("OpenCover for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.openCover(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.openCover(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public void closeCover(EdgeCloseCoverRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void closeCover(CloseCoverCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("CloseCover for Edge SN: {}", request.getBase().getSn());
 		Boolean force = request.hasForce() ? request.getForce() : null;
-		edgeAdapterService.closeCover(request.getBase().getSn(), force)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.closeCover(request.getBase().getSn(), force), responseObserver);
 	}
 
 	@Override
-	public void startCharging(EdgeStartChargingRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void startCharging(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("StartCharging for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.startCharging(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.startCharging(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public void stopCharging(EdgeStopChargingRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void stopCharging(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("StopCharging for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.stopCharging(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.stopCharging(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public void rebootAsset(EdgeRebootAssetRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void rebootAsset(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("RebootAsset for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.rebootAsset(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.rebootAsset(request.getBase().getSn()), responseObserver);
 	}
 
 	@Override
-	public void bootUpSubAsset(EdgeBootSubAssetRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("BootUpSubAsset for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.bootUpSubAsset(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+	public void bootSubAsset(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("BootSubAsset for Edge SN: {}, enabled: {}", request.getBase().getSn(), request.getEnabled());
+		CompletableFuture<CommandResult> result = request.getEnabled()
+				? edgeAdapterService.bootUpSubAsset(request.getBase().getSn())
+				: edgeAdapterService.bootDownSubAsset(request.getBase().getSn());
+		handle(request.getBase(), result, responseObserver);
 	}
 
 	@Override
-	public void bootDownSubAsset(EdgeBootSubAssetRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("BootDownSubAsset for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.bootDownSubAsset(request.getBase().getSn())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+	public void enterOrCloseRemoteDebugMode(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("RemoteDebugMode for Edge SN: {}, enabled: {}", request.getBase().getSn(), request.getEnabled());
+		CompletableFuture<CommandResult> result = request.getEnabled()
+				? edgeAdapterService.enterRemoteDebugMode(request.getBase().getSn())
+				: edgeAdapterService.closeRemoteDebugMode(request.getBase().getSn());
+		handle(request.getBase(), result, responseObserver);
 	}
 
 	@Override
-	public void enterOrCloseRemoteDebugMode(EdgeRemoteDebugModeRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("EnterRemoteDebugMode for Edge SN: {}", request.getBase().getSn());
-		if (request.getEnabled()) {
-			edgeAdapterService.enterRemoteDebugMode(request.getBase().getSn())
-					.thenAccept(result -> {
-						responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-						responseObserver.onCompleted();
-					})
-					.exceptionally(throwable -> {
-						responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-						responseObserver.onCompleted();
-						return null;
-					});
-		} else {
-			edgeAdapterService.closeRemoteDebugMode(request.getBase().getSn())
-					.thenAccept(result -> {
-						responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-						responseObserver.onCompleted();
-					})
-					.exceptionally(throwable -> {
-						responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-						responseObserver.onCompleted();
-						return null;
-					});
-		}
+	public void changeAcMode(ChangeAcModeCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("ChangeAcMode for Edge SN: {}", request.getBase().getSn());
+		handle(request.getBase(), edgeAdapterService.changeAcMode(request.getBase().getSn(), request.getMode().name()), responseObserver);
 	}
 
 	@Override
-	public void startLiveStream(EdgeStartLiveStreamRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void startLiveStream(LiveStreamStartCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("StartLiveStream for Edge SN: {}", request.getBase().getSn());
-		var liveStreamRequest = protoJsonMapper.map(request);
-		edgeAdapterService.startLiveStream(liveStreamRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.startLiveStream(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void stopLiveStream(EdgeStopLiveStreamRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void stopLiveStream(LiveStreamStopCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("StopLiveStream for Edge SN: {}", request.getBase().getSn());
-		var stopRequest = new LiveStreamStopRequest(
-			request.getBase().getSn(),
-			generateUUID(),
-			request.getRequest().getVideoId()
-		);
-		edgeAdapterService.stopLiveStream(stopRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.stopLiveStream(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void changeLens(EdgeChangeCameraLensRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void changeLens(ChangeCameraLensCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("ChangeLens for Edge SN: {}", request.getBase().getSn());
-		var lensRequest = protoJsonMapper.map(request);
-		edgeAdapterService.changeLens(lensRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.changeLens(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void changeZoom(EdgeChangeCameraZoomRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void changeZoom(ChangeCameraZoomCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("ChangeZoom for Edge SN: {}", request.getBase().getSn());
-		var zoomRequest = protoJsonMapper.map(request);
-		edgeAdapterService.changeZoom(zoomRequest)
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.changeZoom(protoJsonMapper.map(request)), responseObserver);
 	}
 
 	@Override
-	public void registerAsset(EdgeRegisterAssetRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void registerAsset(RegisterAssetCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		super.registerAsset(request, responseObserver);
 	}
 
 	@Override
-	public void deRegisterAsset(EdgeDeRegisterAssetRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		super.deRegisterAsset(request, responseObserver);
+	public void deregisterAsset(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		super.deregisterAsset(request, responseObserver);
 	}
 
 	@Override
-	public void startTask(EdgeStartTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void prepareTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("PrepareTask for Edge SN: {}", request.getBase().getSn());
+		handle(request.getBase(), edgeAdapterService.prepareTask(request.getTaskId(), request.getBase().getTid()), responseObserver);
+	}
+
+	@Override
+	public void startTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("StartTask for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.startTask(request.getTaskId(), request.getBase().getTid())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.startTask(request.getTaskId(), request.getBase().getTid()), responseObserver);
 	}
 
 	@Override
-	public void stopTask(EdgeStopTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void stopTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.warn("StopTask for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.stopTask(request.getTaskId())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.stopTask(request.getTaskId()), responseObserver);
 	}
 
-
 	@Override
-	public void pauseTask(EdgePauseTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
+	public void pauseTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("PauseTask for Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.pauseTask(request.getTaskId())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
-					responseObserver.onCompleted();
-				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
-					responseObserver.onCompleted();
-					return null;
-				});
+		handle(request.getBase(), edgeAdapterService.pauseTask(request.getTaskId()), responseObserver);
 	}
-
 
 	@Override
-	public void resumeTask(EdgeResumeTaskRequest request, StreamObserver<EdgeResponse> responseObserver) {
-		log.info("ResumeTask fro Edge SN: {}", request.getBase().getSn());
-		edgeAdapterService.resumeTask(request.getTaskId())
-				.thenAccept(result -> {
-					responseObserver.onNext(toEdgeResponse(request.getBase(), result));
+	public void resumeTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("ResumeTask for Edge SN: {}", request.getBase().getSn());
+		handle(request.getBase(), edgeAdapterService.resumeTask(request.getTaskId()), responseObserver);
+	}
+
+	private void handle(RequestBase base, CompletableFuture<CommandResult> future, StreamObserver<CommandResponse> responseObserver) {
+		future.thenAccept(result -> {
+					responseObserver.onNext(toCommandResponse(base, result));
 					responseObserver.onCompleted();
 				})
 				.exceptionally(throwable -> {
-					responseObserver.onNext(toErrorResponse(request.getBase(), throwable));
+					responseObserver.onNext(toErrorResponse(base, throwable));
 					responseObserver.onCompleted();
 					return null;
 				});
 	}
 
-	protected EdgeResponse toEdgeResponse(RequestBase base, CommandResult result) {
-		EdgeResponse.Builder builder = EdgeResponse.newBuilder()
-				.setTid(base.getTid())
-				.setSn(base.getSn());
+	protected CommandResponse toCommandResponse(RequestBase base, CommandResult result) {
+		CommandResponse.Builder builder = CommandResponse.newBuilder()
+				.setMeta(responseMeta(base, result.getMessage()));
 
-		if (result.getMessage() != null) {
-			builder.setResponseMessage(result.getMessage());
-		}
-
-		// Handle NOT_IMPLEMENTED specifically
-		if (result.isNotImplemented()) {
-			builder.setHasErrors(true)
-					.setError(GlobalErrorMessage.newBuilder()
-							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCode.ERROR_CODE_CLIENT)
-							.setTimestamp(ProtobufHelpers.now())
-							.build());
-
-			log.warn("Command not implemented: {} for SN: {}", result.getMessage(), base.getSn());
-			return builder.build();
-		}
-
-		// Handle success/error
 		if (result.isSuccess()) {
-			builder.setHasErrors(false);
-		} else {
-			builder.setHasErrors(true)
-					.setError(GlobalErrorMessage.newBuilder()
-							.setErrorMessage(result.getMessage())
-							.setErrorCode(ErrorCode.ERROR_CODE_ASSET)
-							.setTimestamp(ProtobufHelpers.now())
-							.build());
+			return builder
+					.setHasErrors(false)
+					.setEmpty(Empty.getDefaultInstance())
+					.build();
 		}
 
-		return builder.build();
-	}
+		ErrorCode errorCode = result.isNotImplemented() ? ErrorCode.ERROR_CODE_CLIENT : ErrorCode.ERROR_CODE_ASSET;
+		if (result.isNotImplemented()) {
+			log.warn("Command not implemented: {} for SN: {}", result.getMessage(), base.getSn());
+		}
 
-	/**
-	 * Convert exception to EdgeResponse (global error handler)
-	 */
-	protected EdgeResponse toErrorResponse(RequestBase base, Throwable error) {
-		log.error("Error processing command for SN: {}, TID: {}", base.getSn(), base.getTid());
-
-		// Determine error code based on exception type
-		ErrorCode errorCode = determineErrorCode(error);
-
-		return EdgeResponse.newBuilder()
+		return builder
 				.setHasErrors(true)
-				.setTid(base.getTid())
-				.setSn(base.getSn())
 				.setError(GlobalErrorMessage.newBuilder()
-						.setErrorMessage(
-								error.getMessage() != null ? error.getMessage() : error.getClass().getSimpleName())
+						.setErrorMessage(result.getMessage())
 						.setErrorCode(errorCode)
 						.setTimestamp(ProtobufHelpers.now())
 						.build())
 				.build();
 	}
 
+	protected CommandResponse toErrorResponse(RequestBase base, Throwable error) {
+		Throwable cause = unwrap(error);
+		log.error("Error processing command for SN: {}, TID: {}", base.getSn(), base.getTid(), cause);
+		return CommandResponse.newBuilder()
+				.setHasErrors(true)
+				.setMeta(responseMeta(base, cause.getMessage()))
+				.setError(toGlobalError(cause))
+				.build();
+	}
+
+	private ResponseMeta responseMeta(RequestBase base, String message) {
+		ResponseMeta.Builder builder = ResponseMeta.newBuilder()
+				.setTid(base.getTid())
+				.setSn(base.getSn())
+				.setTimestamp(ProtobufHelpers.now());
+
+		set(builder::setAssetId, valueOrNull(base.hasAssetId(), base.getAssetId()));
+		set(builder::setExternalId, valueOrNull(base.hasExternalId(), base.getExternalId()));
+		set(builder::setResponseMessage, message);
+		return builder.build();
+	}
+
+	private GlobalErrorMessage toGlobalError(Throwable error) {
+		Throwable cause = unwrap(error);
+		return GlobalErrorMessage.newBuilder()
+				.setErrorMessage(cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName())
+				.setErrorCode(determineErrorCode(cause))
+				.setTimestamp(ProtobufHelpers.now())
+				.build();
+	}
+
 	private ErrorCode determineErrorCode(Throwable error) {
-		// You can customize this based on exception types
-		if (error instanceof IllegalArgumentException) {
+		if (error instanceof IllegalArgumentException || error instanceof UnsupportedOperationException) {
 			return ErrorCode.ERROR_CODE_CLIENT;
-		} else if (error instanceof UnsupportedOperationException) {
-			return ErrorCode.ERROR_CODE_CLIENT;
-		} else if (error instanceof java.util.concurrent.TimeoutException) {
+		}
+		if (error instanceof java.util.concurrent.TimeoutException) {
 			return ErrorCode.ERROR_CODE_SYSTEM;
 		}
 		return ErrorCode.ERROR_CODE_SYSTEM;
 	}
 
-	/**
-	 * Helper to create RequestBase for errors that occur before processing
-	 */
-	protected RequestBase createErrorBase(String sn, String tid) {
+	private Throwable unwrap(Throwable error) {
+		if ((error instanceof CompletionException || error instanceof ExecutionException) && error.getCause() != null) {
+			return error.getCause();
+		}
+		return error;
+	}
+
+	protected RequestBase createBase(String sn, String tid) {
 		return RequestBase.newBuilder()
 				.setSn(sn)
 				.setTid(tid)
@@ -547,7 +369,49 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				.build();
 	}
 
-	private String generateUUID() {
-		return java.util.UUID.randomUUID().toString();
+	private CurrentCapabilities toProtoCapabilities(com.zqnt.sdk.edge.adapter.domains.CurrentCapabilities capabilities) {
+		CurrentCapabilities.Builder builder = CurrentCapabilities.newBuilder()
+				.setAssetSn(valueOrDefault(capabilities.getSn()))
+				.setAssetType(capabilities.getAssetType() != null ? capabilities.getAssetType().name() : "")
+				.setTimestamp(timestampFromMillis(capabilities.getTimestamp()));
+
+		if (capabilities.getCapabilities() != null) {
+			capabilities.getCapabilities().forEach(capability -> {
+				com.zqnt.utils.common.proto.Capability.Builder capabilityBuilder = com.zqnt.utils.common.proto.Capability.newBuilder()
+						.setCommand(valueOrDefault(capability.getCommand()))
+						.setDescription(valueOrDefault(capability.getDescription()))
+						.setAvailable(Boolean.TRUE.equals(capability.getAvailable()));
+
+				set(capabilityBuilder::setUnavailableReason, capability.getUnavailableReason());
+				if (capability.getMetadata() != null) {
+					capabilityBuilder.putAllMetadata(capability.getMetadata());
+				}
+				builder.addCapabilities(capabilityBuilder);
+			});
+		}
+
+		return builder.build();
+	}
+
+	private Timestamp timestampFromMillis(long timestampMillis) {
+		Instant instant = Instant.ofEpochMilli(timestampMillis > 0 ? timestampMillis : System.currentTimeMillis());
+		return Timestamp.newBuilder()
+				.setSeconds(instant.getEpochSecond())
+				.setNanos(instant.getNano())
+				.build();
+	}
+
+	private static <T> void set(java.util.function.Consumer<T> setter, T value) {
+		if (value != null) {
+			setter.accept(value);
+		}
+	}
+
+	private static <T> T valueOrNull(boolean condition, T value) {
+		return condition ? value : null;
+	}
+
+	private static String valueOrDefault(String value) {
+		return value != null ? value : "";
 	}
 }
