@@ -36,16 +36,13 @@
     </scm>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <surefire-plugin.version>3.2.5</surefire-plugin.version>
-        <grpc.version>1.62.2</grpc.version>
-        <protobuf.version>3.25.3</protobuf.version>
+        <grpc.version>1.76.0</grpc.version>
         <slf4j.version>2.0.12</slf4j.version>
-        <lombok.version>1.18.34</lombok.version>
-        <mapstruct.version>1.6.3</mapstruct.version>
-
+        <lombok.version>1.18.42</lombok.version>
+        <protobuf.version>3.25.9</protobuf.version>
     </properties>
 
     <!-- GitHub Packages Repository -->
@@ -68,24 +65,22 @@
         <dependency>
             <groupId>com.zqnt</groupId>
             <artifactId>zqnt-utils-java</artifactId>
-            <version>1.0.0-PR5-40c4e34-SNAPSHOT</version>
+            <version>1.0.0-PR5-b12d219-SNAPSHOT</version>
         </dependency>
         <!-- gRPC dependencies -->
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
+
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
             <version>${grpc.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-api</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+
+        <!-- Protobuf -->
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
@@ -115,10 +110,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jakarta.annotation</groupId>
-            <artifactId>jakarta.annotation-api</artifactId>
-            <version>3.0.0</version>
-            <scope>compile</scope>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -134,16 +129,6 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
-                        </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
