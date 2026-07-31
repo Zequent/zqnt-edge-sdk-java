@@ -1,32 +1,24 @@
 package com.zqnt.sdk.edge.connector.application.impl;
 
-import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
 import com.zqnt.sdk.edge.connector.application.ConnectorService;
-import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.asset.domains.AssetDTO;
+import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
+import com.zqnt.utils.common.proto.RequestBase;
+import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.core.ProtobufHelpers;
-import com.zqnt.utils.missionautonomy.domains.*;
-import com.zqnt.utils.workflow.proto.CreateMissionRequest;
-import com.zqnt.utils.workflow.proto.CreateSchedulerRequest;
-import com.zqnt.utils.workflow.proto.CreateTaskRequest;
-import com.zqnt.utils.workflow.proto.DeleteMissionRequest;
-import com.zqnt.utils.workflow.proto.DeleteSchedulerRequest;
-import com.zqnt.utils.workflow.proto.DeleteTaskRequest;
-import com.zqnt.utils.workflow.proto.GetMissionRequest;
-import com.zqnt.utils.workflow.proto.GetSchedulerRequest;
-import com.zqnt.utils.workflow.proto.GetTaskByFlightIdRequest;
-import com.zqnt.utils.workflow.proto.GetTaskRequest;
-import com.zqnt.utils.workflow.proto.UpdateMissionRequest;
-import com.zqnt.utils.workflow.proto.UpdateSchedulerRequest;
-import com.zqnt.utils.workflow.proto.UpdateTaskRequest;
+import com.zqnt.utils.mission.proto.*;
+import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.missionautonomy.domains.OrganizationDTO;
+import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
+import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+
 import java.util.UUID;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 @Slf4j
@@ -221,6 +213,29 @@ public class ConnectorServiceImpl implements ConnectorService {
 						return null;
 					}
 					return protoJsonMapper.map(response.getSubAsset());
+				});
+	}
+
+	@Override
+	public CompletableFuture<AssetPayloadDTO> upsertAssetPayload(String assetSn, String subAssetSn,
+			AssetPayloadDTO payload) {
+		var base = RequestBase.newBuilder()
+				.setTid(UUID.randomUUID().toString())
+				.setSn(assetSn)
+				.setTimestamp(ProtobufHelpers.now())
+				.build();
+		var builder = UpsertAssetPayloadRequest.newBuilder()
+				.setBase(base)
+				.setPayload(protoJsonMapper.map(payload));
+		if (subAssetSn != null && !subAssetSn.isBlank()) builder.setSubAssetSn(subAssetSn);
+
+		return callAsyncWithRetry(builder.build(), connectorServiceStub::upsertAssetPayload)
+				.thenApply(response -> {
+					if (response.getHasErrors()) {
+						String message = response.hasError() ? response.getError().getErrorMessage() : "unknown error";
+						throw new CompletionException(new IllegalStateException("Payload upsert failed: " + message));
+					}
+					return response.hasPayload() ? protoJsonMapper.map(response.getPayload()) : null;
 				});
 	}
 

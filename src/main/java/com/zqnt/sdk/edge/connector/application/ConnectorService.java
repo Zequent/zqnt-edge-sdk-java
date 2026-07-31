@@ -2,10 +2,13 @@ package com.zqnt.sdk.edge.connector.application;
 
 
 import com.zqnt.utils.asset.domains.AssetDTO;
+import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
-import com.zqnt.utils.missionautonomy.domains.*;
+import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.missionautonomy.domains.OrganizationDTO;
+import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
+import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface ConnectorService {
@@ -16,6 +19,9 @@ public interface ConnectorService {
 	CompletableFuture<AssetDTO> getAssetById(String id);
 
 	CompletableFuture<SubAssetDTO> getSubAssetBySn(String sn);
+
+	CompletableFuture<AssetPayloadDTO> upsertAssetPayload(String assetSn, String subAssetSn,
+			AssetPayloadDTO payload);
 
 	CompletableFuture<AssetDTO> updateAsset(String id, AssetDTO assetDTO);
 

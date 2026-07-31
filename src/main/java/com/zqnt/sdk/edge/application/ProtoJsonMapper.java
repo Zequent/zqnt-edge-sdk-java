@@ -2,22 +2,31 @@ package com.zqnt.sdk.edge.application;
 
 import com.google.protobuf.Timestamp;
 import com.zqnt.sdk.edge.adapter.domains.*;
-import com.zqnt.sdk.edge.adapter.domains.Coordinates;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
 import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
+import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
-import com.zqnt.utils.common.proto.*;
+import com.zqnt.utils.common.proto.AssetPayloadProtoDTO;
+import com.zqnt.utils.common.proto.AssetProtoDTO;
+import com.zqnt.utils.common.proto.OrganizationProtoDTO;
+import com.zqnt.utils.common.proto.SubAssetProtoDTO;
+import com.zqnt.utils.devicecontrol.proto.*;
+import com.zqnt.utils.mission.proto.MissionProtoDTO;
+import com.zqnt.utils.mission.proto.SchedulerProtoDTO;
+import com.zqnt.utils.mission.proto.TaskProtoDTO;
+import com.zqnt.utils.mission.proto.WaypointProtoDTO;
 import com.zqnt.utils.missionautonomy.domains.*;
 import com.zqnt.utils.missionautonomy.domains.config.TaskConfigTemplate;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.UUID;
 
 /**
  * Simple mapper implementation for converting between Proto and POJO models
@@ -26,7 +35,7 @@ public class ProtoJsonMapper {
 
     // Edge Request Mappings
 
-    public Coordinates map(com.zqnt.utils.common.proto.Coordinates proto) {
+    public Coordinates map(GeoCoordinate proto) {
         if (proto == null)
             return null;
         return coordinates(proto.getLatitude(), proto.getLongitude(), proto.getAltitude());
@@ -39,7 +48,7 @@ public class ProtoJsonMapper {
         apply(builder, TakeOffRequest.TakeOffRequestBuilder::sn, request.getBase().getSn());
         apply(builder, TakeOffRequest.TakeOffRequestBuilder::tid, request.getBase().getTid());
         return builder
-                .coordinates(map(request.getRequest()))
+                .coordinates(map(request.getCoordinate()))
                 .externalId(request.getBase().getExternalId())
                 .build();
     }
@@ -51,7 +60,7 @@ public class ProtoJsonMapper {
         apply(builder, GoToRequest.GoToRequestBuilder::sn, request.getBase().getSn());
         apply(builder, GoToRequest.GoToRequestBuilder::tid, request.getBase().getTid());
         return builder
-                .coordinates(map(request.getRequest()))
+                .coordinates(map(request.getCoordinate()))
                 .externalId(request.getBase().getExternalId())
                 .build();
     }
@@ -118,9 +127,9 @@ public class ProtoJsonMapper {
         LookAtRequest.LookAtRequestBuilder builder = LookAtRequest.builder();
         apply(builder, LookAtRequest.LookAtRequestBuilder::sn, request.getBase().getSn());
         return builder
-                .latitude(request.getRequest().getLatitude())
-                .longitude(request.getRequest().getLongitude())
-                .altitude((float) request.getRequest().getAltitude())
+                .latitude(request.getCoordinate().getLatitude())
+                .longitude(request.getCoordinate().getLongitude())
+                .altitude((float) request.getCoordinate().getAltitude())
                 .locked(valueOrNull(request.hasLocked(), request.getLocked()))
                 .payloadIndex(valueOrNull(request.hasPayloadIndex(), request.getPayloadIndex()))
                 .build();
@@ -163,12 +172,17 @@ public class ProtoJsonMapper {
         set(builder::vendor, proto.getVendor());
         set(builder::model, proto.getModel());
         set(builder::connection, proto.getConnection());
-        set(builder::systemConnectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
-        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
+        set(builder::systemConnectionString, valueOrNull(proto.hasSystemConnectionString(), proto.getSystemConnectionString()));
+        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamPushUrl(), proto.getLiveStreamPushUrl()));
+        set(builder::liveStreamPullUrl, valueOrNull(proto.hasLiveStreamPullUrl(), proto.getLiveStreamPullUrl()));
         set(builder::externalDeviceType, valueOrNull(proto.hasExternalDeviceType(), proto.getExternalDeviceType()));
         set(builder::streamUrlPredefined, valueOrNull(proto.hasStreamUrlPredefined(), proto.getStreamUrlPredefined()));
         set(builder::externalDeviceSubType, valueOrNull(proto.hasExternalDeviceSubType(), proto.getExternalDeviceSubType()));
         set(builder::externalId, valueOrNull(proto.hasExternalId(), proto.getExternalId()));
+        set(builder::createdAt, valueOrNull(proto.hasCreatedAt(), toLocalDateTime(proto.getCreatedAt())));
+        set(builder::modifiedAt, valueOrNull(proto.hasModifiedAt(), toLocalDateTime(proto.getModifiedAt())));
+        set(builder::modifiedFrom, valueOrNull(proto.hasModifiedFrom(), proto.getModifiedFrom()));
+        builder.payloads(proto.getPayloadsList().stream().map(this::map).toList());
 
         return builder.build();
     }
@@ -185,13 +199,18 @@ public class ProtoJsonMapper {
         set(builder::setType, dto.getType());
         set(builder::setVendor, dto.getVendor());
         set(builder::setConnection, dto.getConnection());
-        set(builder::setConnectionString, dto.getSystemConnectionString());
+        set(builder::setSystemConnectionString, dto.getSystemConnectionString());
         set(builder::setModel, dto.getModel());
-        set(builder::setLiveStreamServer, dto.getLiveStreamPushUrl());
+        set(builder::setLiveStreamPushUrl, dto.getLiveStreamPushUrl());
+        set(builder::setLiveStreamPullUrl, dto.getLiveStreamPullUrl());
         set(builder::setStreamUrlPredefined, dto.getStreamUrlPredefined());
         set(builder::setExternalDeviceType, dto.getExternalDeviceType());
         set(builder::setExternalDeviceSubType, dto.getExternalDeviceSubType());
         set(builder::setExternalId, dto.getExternalId());
+        set(builder::setCreatedAt, dto.getCreatedAt() == null ? null : toTimestamp(dto.getCreatedAt()));
+        set(builder::setModifiedAt, dto.getModifiedAt() == null ? null : toTimestamp(dto.getModifiedAt()));
+        set(builder::setModifiedFrom, dto.getModifiedFrom());
+        if (dto.getPayloads() != null) dto.getPayloads().stream().map(this::map).forEach(builder::addPayloads);
 
         return builder.build();
     }
@@ -209,13 +228,18 @@ public class ProtoJsonMapper {
         set(builder::vendor, proto.getVendor());
         set(builder::connection, proto.getConnection());
         set(builder::model, proto.getModel());
-        set(builder::systemConnectionString, valueOrNull(proto.hasConnectionString(), proto.getConnectionString()));
-        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamServer(), proto.getLiveStreamServer()));
+        set(builder::systemConnectionString, valueOrNull(proto.hasSystemConnectionString(), proto.getSystemConnectionString()));
+        set(builder::liveStreamPushUrl, valueOrNull(proto.hasLiveStreamPushUrl(), proto.getLiveStreamPushUrl()));
+        set(builder::liveStreamPullUrl, valueOrNull(proto.hasLiveStreamPullUrl(), proto.getLiveStreamPullUrl()));
         set(builder::externalId, valueOrNull(proto.hasExternalId(), proto.getExternalId()));
         set(builder::externalDeviceType, valueOrNull(proto.hasExternalDeviceType(), proto.getExternalDeviceType()));
         set(builder::externalDeviceSubType, valueOrNull(proto.hasExternalDeviceSubType(), proto.getExternalDeviceSubType()));
-        set(builder::subAsset, valueOrNull(proto.hasSubAssetDto(), map(proto.getSubAssetDto())));
+        builder.subAssets(proto.getSubAssetsList().stream().map(this::map).toList());
         set(builder::organization, uuid(proto.getOrganization()));
+        set(builder::createdAt, valueOrNull(proto.hasCreatedAt(), toLocalDateTime(proto.getCreatedAt())));
+        set(builder::modifiedAt, valueOrNull(proto.hasModifiedAt(), toLocalDateTime(proto.getModifiedAt())));
+        set(builder::modifiedFrom, valueOrNull(proto.hasModifiedFrom(), proto.getModifiedFrom()));
+        builder.payloads(proto.getPayloadsList().stream().map(this::map).toList());
 
         return builder.build();
     }
@@ -233,14 +257,65 @@ public class ProtoJsonMapper {
         set(builder::setVendor, dto.getVendor());
         set(builder::setConnection, dto.getConnection());
         set(builder::setModel, dto.getModel());
-        set(builder::setConnectionString, dto.getSystemConnectionString());
-        set(builder::setLiveStreamServer, dto.getLiveStreamPushUrl());
+        set(builder::setSystemConnectionString, dto.getSystemConnectionString());
+        set(builder::setLiveStreamPushUrl, dto.getLiveStreamPushUrl());
+        set(builder::setLiveStreamPullUrl, dto.getLiveStreamPullUrl());
         set(builder::setExternalId, dto.getExternalId());
         set(builder::setExternalDeviceType, dto.getExternalDeviceType());
         set(builder::setExternalDeviceSubType, dto.getExternalDeviceSubType());
-        set(builder::setSubAssetDto, valueOrNull(dto.getSubAsset() != null, map(dto.getSubAsset())));
+        if (dto.getSubAssets() != null) dto.getSubAssets().stream().map(this::map).forEach(builder::addSubAssets);
         set(builder::setOrganization, uuidString(dto.getOrganization()));
+        set(builder::setCreatedAt, dto.getCreatedAt() == null ? null : toTimestamp(dto.getCreatedAt()));
+        set(builder::setModifiedAt, dto.getModifiedAt() == null ? null : toTimestamp(dto.getModifiedAt()));
+        set(builder::setModifiedFrom, dto.getModifiedFrom());
+        if (dto.getPayloads() != null) dto.getPayloads().stream().map(this::map).forEach(builder::addPayloads);
 
+        return builder.build();
+    }
+
+    public AssetPayloadDTO map(AssetPayloadProtoDTO proto) {
+        if (proto == null) return null;
+        return AssetPayloadDTO.builder()
+                .id(proto.hasId() ? uuid(proto.getId()) : null)
+                .externalId(proto.hasExternalId() ? proto.getExternalId() : null)
+                .externalType(proto.hasExternalType() ? proto.getExternalType() : null)
+                .slotIndex(proto.hasSlotIndex() ? proto.getSlotIndex() : null)
+                .name(proto.hasName() ? proto.getName() : null)
+                .serialNumber(proto.hasSerialNumber() ? proto.getSerialNumber() : null)
+                .kind(proto.hasKind() ? proto.getKind() : null)
+                .vendor(proto.hasVendor() ? proto.getVendor() : null)
+                .model(proto.hasModel() ? proto.getModel() : null)
+                .firmwareVersion(proto.hasFirmwareVersion() ? proto.getFirmwareVersion() : null)
+                .libraryVersion(proto.hasLibraryVersion() ? proto.getLibraryVersion() : null)
+                .state(proto.hasStateJson() ? JsonUtils.fromJson(proto.getStateJson(), Map.class) : null)
+                .active(proto.getActive())
+                .lastSeenAt(proto.hasLastSeenAt() ? toLocalDateTime(proto.getLastSeenAt()) : null)
+                .createdAt(proto.hasCreatedAt() ? toLocalDateTime(proto.getCreatedAt()) : null)
+                .modifiedAt(proto.hasModifiedAt() ? toLocalDateTime(proto.getModifiedAt()) : null)
+                .modifiedFrom(proto.hasModifiedFrom() ? proto.getModifiedFrom() : null)
+                .build();
+    }
+
+    public AssetPayloadProtoDTO map(AssetPayloadDTO dto) {
+        if (dto == null) return null;
+        AssetPayloadProtoDTO.Builder builder = AssetPayloadProtoDTO.newBuilder()
+                .setActive(Boolean.TRUE.equals(dto.getActive()));
+        set(builder::setId, uuidString(dto.getId()));
+        set(builder::setExternalId, dto.getExternalId());
+        set(builder::setExternalType, dto.getExternalType());
+        if (dto.getSlotIndex() != null) builder.setSlotIndex(dto.getSlotIndex());
+        set(builder::setName, dto.getName());
+        set(builder::setSerialNumber, dto.getSerialNumber());
+        set(builder::setKind, dto.getKind());
+        set(builder::setVendor, dto.getVendor());
+        set(builder::setModel, dto.getModel());
+        set(builder::setFirmwareVersion, dto.getFirmwareVersion());
+        set(builder::setLibraryVersion, dto.getLibraryVersion());
+        if (dto.getState() != null) builder.setStateJson(JsonUtils.toJson(dto.getState()));
+        if (dto.getLastSeenAt() != null) builder.setLastSeenAt(toTimestamp(dto.getLastSeenAt()));
+        if (dto.getCreatedAt() != null) builder.setCreatedAt(toTimestamp(dto.getCreatedAt()));
+        if (dto.getModifiedAt() != null) builder.setModifiedAt(toTimestamp(dto.getModifiedAt()));
+        set(builder::setModifiedFrom, dto.getModifiedFrom());
         return builder.build();
     }
 

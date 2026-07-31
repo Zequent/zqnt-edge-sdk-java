@@ -1,11 +1,11 @@
 package com.zqnt.sdk.edge.adapter.domains;
 
-import com.zqnt.utils.common.proto.MissionStatus;
-import com.zqnt.utils.common.proto.MissionType;
-import com.zqnt.utils.common.proto.TaskStatus;
-import com.zqnt.utils.common.proto.TaskTypeProto;
 import com.zqnt.utils.events.proto.NotificationEventType;
 import com.zqnt.utils.events.proto.NotificationSeverity;
+import com.zqnt.utils.mission.proto.MissionStatus;
+import com.zqnt.utils.mission.proto.MissionType;
+import com.zqnt.utils.mission.proto.TaskStatus;
+import com.zqnt.utils.mission.proto.TaskTypeProto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,7 +26,7 @@ public class NotificationRequestData {
 	// Only one of the following event fields should be set (oneof)
 	private AssetStatusEventData assetStatusEvent;
 	private TaskEventData taskEvent;
-	private OperationEventData operationEvent;
+	private MissionEventData missionEvent;
 	private NotificationSeverity severity;
 	private NotificationEventType eventType;
 
@@ -59,8 +59,8 @@ public class NotificationRequestData {
 	@Builder
 	@NoArgsConstructor
 	@AllArgsConstructor
-	public static class OperationEventData {
-		private String operationId;
+	public static class MissionEventData {
+		private String missionId;
 		private MissionType missionType;
 		private MissionStatus status;
 		private String message;

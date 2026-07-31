@@ -1,25 +1,19 @@
 -dontwarn
+-dontshrink
 -dontoptimize
--dontpreverify
 
-# Quarkus reflection
--keep class io.quarkus.** { *; }
-
-# CDI
--keep class jakarta.inject.** { *; }
--keep class jakarta.enterprise.** { *; }
-
-# REST
--keep class jakarta.ws.rs.** { *; }
-
-# application classes
--keep class org.example.** { *; }
-
-# main entrypoint
--keep class * {
-    public static void main(java.lang.String[]);
+# Keep the complete customer-facing binary API stable. Private implementation
+# details can still be renamed by ProGuard.
+-keepnames public class com.zqnt.sdk.edge.**
+-keepclassmembers public class com.zqnt.sdk.edge.** {
+    public protected *;
 }
+-keep public interface com.zqnt.sdk.edge.** { *; }
+-keep public enum com.zqnt.sdk.edge.** { *; }
 
-# remove debug info
+# Preserve metadata used by generic signatures, annotations, Lombok-generated
+# nested builders and framework/runtime inspection.
+-keepattributes Signature,*Annotation*,InnerClasses,EnclosingMethod,MethodParameters,Exceptions
+
+# Do not expose local source paths in stack traces.
 -renamesourcefileattribute SourceFile
--keepattributes Exceptions

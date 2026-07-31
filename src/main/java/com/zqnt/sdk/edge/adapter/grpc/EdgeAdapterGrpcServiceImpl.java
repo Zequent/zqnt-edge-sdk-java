@@ -1,42 +1,25 @@
 package com.zqnt.sdk.edge.adapter.grpc;
 
 import com.google.protobuf.Empty;
-import com.google.protobuf.Timestamp;
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
 import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
 import com.zqnt.sdk.edge.adapter.domains.CommandResult;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.sdk.edge.application.ProtoJsonMapper;
-import com.zqnt.utils.common.proto.AssetCapabilitiesRequest;
-import com.zqnt.utils.common.proto.AssetCapabilitiesResponse;
-import com.zqnt.utils.common.proto.ChangeAcModeCommandRequest;
-import com.zqnt.utils.common.proto.ChangeCameraLensCommandRequest;
-import com.zqnt.utils.common.proto.ChangeCameraZoomCommandRequest;
-import com.zqnt.utils.common.proto.CloseCoverCommandRequest;
-import com.zqnt.utils.common.proto.CommandResponse;
-import com.zqnt.utils.common.proto.CoordinateCommandRequest;
-import com.zqnt.utils.common.proto.CurrentCapabilities;
-import com.zqnt.utils.common.proto.EmptyCommandRequest;
 import com.zqnt.utils.common.proto.ErrorCode;
 import com.zqnt.utils.common.proto.GlobalErrorMessage;
-import com.zqnt.utils.common.proto.LiveStreamStartCommandRequest;
-import com.zqnt.utils.common.proto.LiveStreamStopCommandRequest;
-import com.zqnt.utils.common.proto.LookAtCommandRequest;
-import com.zqnt.utils.common.proto.ManualControlCommandRequest;
-import com.zqnt.utils.common.proto.ManualControlInputCommandRequest;
-import com.zqnt.utils.common.proto.RegisterAssetCommandRequest;
 import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.utils.common.proto.ResponseMeta;
-import com.zqnt.utils.common.proto.ReturnToHomeCommandRequest;
-import com.zqnt.utils.common.proto.TaskCommandRequest;
-import com.zqnt.utils.common.proto.ToggleCommandRequest;
 import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-import java.util.concurrent.CompletionException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
 @Slf4j
@@ -51,22 +34,53 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
-	public void getCapabilities(AssetCapabilitiesRequest request, StreamObserver<AssetCapabilitiesResponse> responseObserver) {
-		log.info("GetCapabilities for Edge SN: {}", request.getSn());
-		edgeAdapterService.getCapabilities(request.getSn())
+	public void sendCustomCommand(CustomCommandRequest request,
+			StreamObserver<CustomCommandResponse> responseObserver) {
+		String componentId = request.hasTarget() && request.getTarget().hasTargetRef()
+				? request.getTarget().getTargetRef() : null;
+		edgeAdapterService.sendCustomCommand(request.getBase().getSn(), componentId,
+				request.getCommandId(), structToMap(request.getParams()))
 				.thenAccept(result -> {
-					responseObserver.onNext(AssetCapabilitiesResponse.newBuilder()
-							.setCapabilities(toProtoCapabilities(result))
-							.build());
+					CustomCommandResponse.Builder builder = CustomCommandResponse.newBuilder()
+							.setCommandId(request.getCommandId())
+							.setMeta(responseMeta(request.getBase(), result.getMessage()));
+					if (result.isSuccess()) {
+						builder.setHasErrors(false).setEmpty(Empty.getDefaultInstance());
+					} else {
+						builder.setHasErrors(true).setError(GlobalErrorMessage.newBuilder()
+								.setErrorMessage(result.getMessage())
+								.setErrorCode(result.isNotImplemented() ? ErrorCode.ERROR_CODE_CLIENT : ErrorCode.ERROR_CODE_ASSET)
+								.setTimestamp(ProtobufHelpers.now()));
+					}
+					responseObserver.onNext(builder.build());
 					responseObserver.onCompleted();
 				})
-				.exceptionally(throwable -> {
-					responseObserver.onNext(AssetCapabilitiesResponse.newBuilder()
-							.setError(toGlobalError(throwable))
-							.build());
+				.exceptionally(error -> {
+					Throwable cause = unwrap(error);
+					responseObserver.onNext(CustomCommandResponse.newBuilder()
+								.setHasErrors(true).setCommandId(request.getCommandId())
+							.setMeta(responseMeta(request.getBase(), cause.getMessage()))
+							.setError(toGlobalError(cause)).build());
 					responseObserver.onCompleted();
 					return null;
 				});
+	}
+
+	private Map<String, Object> structToMap(Struct struct) {
+		Map<String, Object> result = new java.util.LinkedHashMap<>();
+		struct.getFieldsMap().forEach((key, value) -> result.put(key, valueToObject(value)));
+		return result;
+	}
+
+	private Object valueToObject(Value value) {
+		return switch (value.getKindCase()) {
+			case NULL_VALUE, KIND_NOT_SET -> null;
+			case NUMBER_VALUE -> value.getNumberValue();
+			case STRING_VALUE -> value.getStringValue();
+			case BOOL_VALUE -> value.getBoolValue();
+			case STRUCT_VALUE -> structToMap(value.getStructValue());
+			case LIST_VALUE -> value.getListValue().getValuesList().stream().map(this::valueToObject).toList();
+		};
 	}
 
 	@Override
@@ -145,7 +159,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
-	public void takePhoto(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+	public void capturePhoto(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("TakePhoto for Edge SN: {}", request.getBase().getSn());
 		handle(request.getBase(), edgeAdapterService.takePhoto(protoJsonMapper.map(request)), responseObserver);
 	}
@@ -197,7 +211,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
-	public void enterOrCloseRemoteDebugMode(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+	public void setRemoteDebugMode(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("RemoteDebugMode for Edge SN: {}, enabled: {}", request.getBase().getSn(), request.getEnabled());
 		CompletableFuture<CommandResult> result = request.getEnabled()
 				? edgeAdapterService.enterRemoteDebugMode(request.getBase().getSn())
@@ -366,38 +380,6 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				.setSn(sn)
 				.setTid(tid)
 				.setTimestamp(ProtobufHelpers.now())
-				.build();
-	}
-
-	private CurrentCapabilities toProtoCapabilities(com.zqnt.sdk.edge.adapter.domains.CurrentCapabilities capabilities) {
-		CurrentCapabilities.Builder builder = CurrentCapabilities.newBuilder()
-				.setAssetSn(valueOrDefault(capabilities.getSn()))
-				.setAssetType(capabilities.getAssetType() != null ? capabilities.getAssetType().name() : "")
-				.setTimestamp(timestampFromMillis(capabilities.getTimestamp()));
-
-		if (capabilities.getCapabilities() != null) {
-			capabilities.getCapabilities().forEach(capability -> {
-				com.zqnt.utils.common.proto.Capability.Builder capabilityBuilder = com.zqnt.utils.common.proto.Capability.newBuilder()
-						.setCommand(valueOrDefault(capability.getCommand()))
-						.setDescription(valueOrDefault(capability.getDescription()))
-						.setAvailable(Boolean.TRUE.equals(capability.getAvailable()));
-
-				set(capabilityBuilder::setUnavailableReason, capability.getUnavailableReason());
-				if (capability.getMetadata() != null) {
-					capabilityBuilder.putAllMetadata(capability.getMetadata());
-				}
-				builder.addCapabilities(capabilityBuilder);
-			});
-		}
-
-		return builder.build();
-	}
-
-	private Timestamp timestampFromMillis(long timestampMillis) {
-		Instant instant = Instant.ofEpochMilli(timestampMillis > 0 ? timestampMillis : System.currentTimeMillis());
-		return Timestamp.newBuilder()
-				.setSeconds(instant.getEpochSecond())
-				.setNanos(instant.getNano())
 				.build();
 	}
 

@@ -1,8 +1,6 @@
 package com.zqnt.sdk.edge.adapter.domains;
 
-import com.zqnt.utils.common.proto.LiveDataType;
-import com.zqnt.utils.edge.sdk.domains.AssetTelemetryData;
-import com.zqnt.utils.edge.sdk.domains.SubAssetTelemetryData;
+import com.zqnt.utils.edge.sdk.domains.TelemetryData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,8 +18,6 @@ public class TelemetryRequestData {
 	private String sn;
 	private String assetId;
 	private LocalDateTime timestamp;
-	private LiveDataType type;
-	private AssetTelemetryData assetTelemetry;
-	private SubAssetTelemetryData subAssetTelemetry;
+	private TelemetryData telemetry;
 
 }

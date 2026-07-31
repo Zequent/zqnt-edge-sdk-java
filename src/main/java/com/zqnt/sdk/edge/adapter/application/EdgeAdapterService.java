@@ -2,9 +2,16 @@ package com.zqnt.sdk.edge.adapter.application;
 
 import com.zqnt.sdk.edge.adapter.domains.*;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public interface EdgeAdapterService {
+
+	default CompletableFuture<CommandResult> sendCustomCommand(String sn, String componentId,
+			String commandType, Map<String, Object> params) {
+		return CompletableFuture.completedFuture(
+				CommandResult.notImplemented("Custom command is not implemented for this asset", sn));
+	}
 
 	/**
 	 * Execute takeoff command

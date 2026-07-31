@@ -2,11 +2,7 @@ package com.zqnt.sdk.edge.livedata.application;
 
 import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
 import com.zqnt.sdk.edge.support.MapperSupport;
-import com.zqnt.utils.events.proto.AssetStatusEvent;
-import com.zqnt.utils.events.proto.NotificationEvent;
-import com.zqnt.utils.events.proto.OperationEvent;
-import com.zqnt.utils.events.proto.ProduceNotificationRequest;
-import com.zqnt.utils.events.proto.TaskEvent;
+import com.zqnt.utils.events.proto.*;
 
 /**
  * Mapper for converting notification POJO data to Proto messages and vice versa.
@@ -29,7 +25,7 @@ public class NotificationMapper {
 		switch (event.getEventCase()) {
 			case ASSET_STATUS -> data.setAssetStatusEvent(map(event.getAssetStatus()));
 			case TASK -> data.setTaskEvent(map(event.getTask()));
-			case OPERATION -> data.setOperationEvent(map(event.getOperation()));
+			case MISSION -> data.setMissionEvent(map(event.getMission()));
 			default -> { /* no-op for ERROR or EVENT_NOT_SET */ }
 		}
 
@@ -50,8 +46,8 @@ public class NotificationMapper {
 			eventBuilder.setAssetStatus(map(requestData.getAssetStatusEvent()));
 		} else if (requestData.getTaskEvent() != null) {
 			eventBuilder.setTask(map(requestData.getTaskEvent()));
-		} else if (requestData.getOperationEvent() != null) {
-			eventBuilder.setOperation(map(requestData.getOperationEvent()));
+		} else if (requestData.getMissionEvent() != null) {
+			eventBuilder.setMission(map(requestData.getMissionEvent()));
 		}
 		builder.setEvent(eventBuilder.build());
 
@@ -98,18 +94,18 @@ public class NotificationMapper {
 		return builder.build();
 	}
 
-	private NotificationRequestData.OperationEventData map(OperationEvent proto) {
-		return NotificationRequestData.OperationEventData.builder()
-				.operationId(proto.getOperationId())
+	private NotificationRequestData.MissionEventData map(MissionEvent proto) {
+		return NotificationRequestData.MissionEventData.builder()
+				.missionId(proto.getMissionId())
 				.missionType(proto.getMissionType())
 				.status(proto.getStatus())
 				.message(proto.hasMessage() ? proto.getMessage() : null)
 				.build();
 	}
 
-	private OperationEvent map(NotificationRequestData.OperationEventData data) {
-		OperationEvent.Builder builder = OperationEvent.newBuilder()
-				.setOperationId(MapperSupport.defaultString(data.getOperationId()));
+	private MissionEvent map(NotificationRequestData.MissionEventData data) {
+		MissionEvent.Builder builder = MissionEvent.newBuilder()
+				.setMissionId(MapperSupport.defaultString(data.getMissionId()));
 		MapperSupport.set(builder::setMissionType, data.getMissionType());
 		MapperSupport.set(builder::setStatus, data.getStatus());
 		MapperSupport.set(builder::setMessage, data.getMessage());
