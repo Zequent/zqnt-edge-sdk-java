@@ -3,6 +3,7 @@ package com.zqnt.sdk.edge.adapter.grpc;
 import com.google.protobuf.Empty;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import com.google.protobuf.util.Timestamps;
 import com.zqnt.sdk.edge.adapter.application.EdgeAdapterService;
 import com.zqnt.sdk.edge.adapter.domains.CommandResult;
 import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
@@ -31,6 +32,74 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	public EdgeAdapterGrpcServiceImpl(EdgeAdapterService edgeAdapterService, ProtoJsonMapper protoJsonMapper) {
 		this.edgeAdapterService = edgeAdapterService;
 		this.protoJsonMapper = protoJsonMapper;
+	}
+
+	@Override
+	public void getCapabilities(AssetCapabilitiesRequest request,
+			StreamObserver<AssetCapabilitiesResponse> responseObserver) {
+		edgeAdapterService.getCapabilities(request.getSn()).thenAccept(current -> {
+			AssetCapabilities.Builder capabilities = AssetCapabilities.newBuilder()
+					.setAssetSn(current.getSn() == null ? request.getSn() : current.getSn())
+					.setAssetType(current.getAssetType() == null ? "" : current.getAssetType().name())
+					.setTimestamp(Timestamps.fromMillis(current.getTimestamp()))
+					.setSnapshotState(CapabilitySnapshotState.CAPABILITY_SNAPSHOT_STATE_CURRENT);
+			if (current.getCapabilities() != null) {
+				current.getCapabilities().stream().map(this::toProto).forEach(capabilities::addCapabilities);
+			}
+			responseObserver.onNext(AssetCapabilitiesResponse.newBuilder().setCapabilities(capabilities).build());
+			responseObserver.onCompleted();
+		}).exceptionally(error -> {
+			responseObserver.onNext(AssetCapabilitiesResponse.newBuilder()
+					.setError(toGlobalError(unwrap(error))).build());
+			responseObserver.onCompleted();
+			return null;
+		});
+	}
+
+	private com.zqnt.utils.devicecontrol.proto.Capability toProto(
+			com.zqnt.sdk.edge.adapter.domains.Capability value) {
+		com.zqnt.utils.devicecontrol.proto.Capability.Builder builder =
+				com.zqnt.utils.devicecontrol.proto.Capability.newBuilder()
+						.setCommandId(value.getCommand() == null ? "" : value.getCommand())
+						.setDisplayName(value.getCommand() == null ? "" : value.getCommand())
+						.setState(Boolean.TRUE.equals(value.getAvailable())
+								? CapabilityState.CAPABILITY_STATE_AVAILABLE
+								: CapabilityState.CAPABILITY_STATE_TEMPORARILY_UNAVAILABLE);
+		if (value.getDescription() != null) builder.setDescription(value.getDescription());
+		if (value.getUnavailableReason() != null) builder.setUnavailableReason(value.getUnavailableReason());
+		if (value.getMetadata() != null) builder.putAllMetadata(value.getMetadata());
+		if (value.getConstraints() != null) builder.setConstraints(mapToStruct(value.getConstraints()));
+		if (value.getInputSchema() != null) builder.setInputSchema(mapToStruct(value.getInputSchema()));
+		if (value.getOutputSchema() != null) builder.setOutputSchema(mapToStruct(value.getOutputSchema()));
+		if (value.getSchemaVersion() != null) builder.setSchemaVersion(value.getSchemaVersion());
+		CapabilityTarget.Builder target = CapabilityTarget.newBuilder().setType(value.getTargetType() == null
+				? CapabilityTargetType.CAPABILITY_TARGET_TYPE_ASSET : value.getTargetType());
+		if (value.getTargetRef() != null) target.setTargetRef(value.getTargetRef());
+		return builder.setTarget(target).build();
+	}
+
+	private Struct mapToStruct(Map<String, Object> values) {
+		Struct.Builder builder = Struct.newBuilder();
+		values.forEach((key, value) -> builder.putFields(key, objectToValue(value)));
+		return builder.build();
+	}
+
+	private Value objectToValue(Object value) {
+		Value.Builder builder = Value.newBuilder();
+		if (value == null) return builder.setNullValue(com.google.protobuf.NullValue.NULL_VALUE).build();
+		if (value instanceof Boolean bool) return builder.setBoolValue(bool).build();
+		if (value instanceof Number number) return builder.setNumberValue(number.doubleValue()).build();
+		if (value instanceof Map<?, ?> map) {
+			Map<String, Object> normalized = new java.util.LinkedHashMap<>();
+			map.forEach((key, item) -> normalized.put(String.valueOf(key), item));
+			return builder.setStructValue(mapToStruct(normalized)).build();
+		}
+		if (value instanceof Iterable<?> iterable) {
+			com.google.protobuf.ListValue.Builder list = com.google.protobuf.ListValue.newBuilder();
+			iterable.forEach(item -> list.addValues(objectToValue(item)));
+			return builder.setListValue(list).build();
+		}
+		return builder.setStringValue(String.valueOf(value)).build();
 	}
 
 	@Override
