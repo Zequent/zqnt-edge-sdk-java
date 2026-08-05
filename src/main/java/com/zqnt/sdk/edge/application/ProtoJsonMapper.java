@@ -12,13 +12,14 @@ import com.zqnt.utils.common.proto.AssetPayloadProtoDTO;
 import com.zqnt.utils.common.proto.AssetProtoDTO;
 import com.zqnt.utils.common.proto.OrganizationProtoDTO;
 import com.zqnt.utils.common.proto.SubAssetProtoDTO;
+import com.zqnt.utils.core.ProtoJsonUtils;
 import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.mission.proto.MissionProtoDTO;
 import com.zqnt.utils.mission.proto.SchedulerProtoDTO;
 import com.zqnt.utils.mission.proto.TaskProtoDTO;
 import com.zqnt.utils.mission.proto.WaypointProtoDTO;
 import com.zqnt.utils.missionautonomy.domains.*;
-import com.zqnt.utils.missionautonomy.domains.config.TaskConfigTemplate;
+import com.zqnt.utils.missionautonomy.domains.config.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -399,10 +400,14 @@ public class ProtoJsonMapper {
         set(builder::missionId, uuid(proto.getMissionId()));
         set(builder::name, valueOrNull(proto.hasName(), proto.getName()));
         set(builder::description, valueOrNull(proto.hasDescription(), proto.getDescription()));
+        set(builder::taskType, proto.getTaskType());
         set(builder::assetId, valueOrNull(proto.hasAssetId(), proto.getAssetId()));
         set(builder::snNumber, valueOrNull(proto.hasSnNumber(), proto.getSnNumber()));
         set(builder::externalTaskId, valueOrNull(proto.hasExternalTaskId(), proto.getExternalTaskId()));
-        set(builder::config, valueOrNull(proto.hasConfig(), JsonUtils.fromJson(proto.getConfig(), TaskConfigTemplate.class)));
+        TaskConfigTemplate taskConfig = mapTypedTaskConfig(proto);
+        set(builder::config, taskConfig != null
+                ? taskConfig
+                : valueOrNull(proto.hasConfig(), JsonUtils.fromJson(proto.getConfig(), TaskConfigTemplate.class)));
         set(builder::currentProgress, valueOrNull(proto.hasCurrentProgress(), proto.getCurrentProgress()));
         set(builder::currentStep, valueOrNull(proto.hasCurrentStep(), proto.getCurrentStep()));
         set(builder::breakReason, valueOrNull(proto.hasBreakReason(), proto.getBreakReason()));
@@ -421,16 +426,66 @@ public class ProtoJsonMapper {
         set(builder::setMissionId, uuidString(dto.getMissionId()));
         set(builder::setName, dto.getName());
         set(builder::setDescription, dto.getDescription());
+        set(builder::setTaskType, dto.getTaskType());
         set(builder::setStatus, dto.getStatus());
         set(builder::setAssetId, dto.getAssetId());
         set(builder::setSnNumber, dto.getSnNumber());
         set(builder::setExternalTaskId, dto.getExternalTaskId());
         set(builder::setConfig, valueOrNull(dto.getConfig() != null, JsonUtils.toJson(dto.getConfig())));
+        setTypedTaskConfig(builder, dto.getConfig());
         set(builder::setCurrentProgress, dto.getCurrentProgress());
         set(builder::setCurrentStep, dto.getCurrentStep());
         set(builder::setBreakReason, dto.getBreakReason());
 
         return builder.build();
+    }
+
+    private TaskConfigTemplate mapTypedTaskConfig(TaskProtoDTO proto) {
+        return switch (proto.getTaskConfigCase()) {
+            case WAYPOINT_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getWaypointConfig()), WaypointTaskConfig.class);
+            case DETECT_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getDetectConfig()), DetectTaskConfig.class);
+            case AREA_MAPPING_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getAreaMappingConfig()), AreaMappingTaskConfig.class);
+            case POI_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getPoiConfig()), PoiTaskConfig.class);
+            case FOLLOW_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getFollowConfig()), FollowTaskConfig.class);
+            case TRACK_CONFIG -> JsonUtils.fromJson(
+                    ProtoJsonUtils.toJson(proto.getTrackConfig()), TrackTaskConfig.class);
+            default -> null;
+        };
+    }
+
+    private void setTypedTaskConfig(TaskProtoDTO.Builder builder, TaskConfigTemplate config) {
+        if (config == null) {
+            return;
+        }
+        String json = JsonUtils.toJson(config);
+        switch (config) {
+            case WaypointTaskConfig ignored -> builder.setWaypointConfig(
+                    (com.zqnt.utils.mission.proto.WaypointTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.WaypointTaskConfigProto.newBuilder()));
+            case DetectTaskConfig ignored -> builder.setDetectConfig(
+                    (com.zqnt.utils.mission.proto.DetectTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.DetectTaskConfigProto.newBuilder()));
+            case AreaMappingTaskConfig ignored -> builder.setAreaMappingConfig(
+                    (com.zqnt.utils.mission.proto.AreaMappingTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.AreaMappingTaskConfigProto.newBuilder()));
+            case PoiTaskConfig ignored -> builder.setPoiConfig(
+                    (com.zqnt.utils.mission.proto.PoiTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.PoiTaskConfigProto.newBuilder()));
+            case FollowTaskConfig ignored -> builder.setFollowConfig(
+                    (com.zqnt.utils.mission.proto.FollowTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.FollowTaskConfigProto.newBuilder()));
+            case TrackTaskConfig ignored -> builder.setTrackConfig(
+                    (com.zqnt.utils.mission.proto.TrackTaskConfigProto) ProtoJsonUtils.fromJson(
+                            json, com.zqnt.utils.mission.proto.TrackTaskConfigProto.newBuilder()));
+            default -> {
+                // No typed proto representation is available for this config implementation.
+            }
+        }
     }
 
     public SchedulerDTO map(SchedulerProtoDTO proto) {

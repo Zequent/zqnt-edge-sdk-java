@@ -206,7 +206,6 @@ public interface EdgeAdapterService {
 		);
 	}
 
-
 	/**
 	 * Enter remote debug mode
 	 * Default: Returns NOT_IMPLEMENTED error
@@ -237,6 +236,15 @@ public interface EdgeAdapterService {
 		);
 	}
 
+	/**
+	 * Enable or disable the livestream split-screen view.
+	 * Default: Returns NOT_IMPLEMENTED error
+	 */
+	default CompletableFuture<CommandResult> liveStreamSplitScreen(String sn, boolean enabled) {
+		return CompletableFuture.completedFuture(
+			CommandResult.notImplemented("liveStreamSplitScreen is not implemented for this asset", sn)
+		);
+	}
 	/**
 	 * Enable gimbal tracking
 	 * Default: Returns NOT_IMPLEMENTED error

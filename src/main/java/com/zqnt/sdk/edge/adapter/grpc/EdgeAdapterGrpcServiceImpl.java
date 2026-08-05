@@ -228,6 +228,14 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 	}
 
 	@Override
+	public void liveStreamSplitScreen(ToggleCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
+		log.info("LiveStreamSplitScreen for Edge SN: {}, enabled: {}",
+				request.getBase().getSn(), request.getEnabled());
+		handle(request.getBase(), edgeAdapterService.liveStreamSplitScreen(
+				request.getBase().getSn(), request.getEnabled()), responseObserver);
+	}
+
+	@Override
 	public void capturePhoto(EmptyCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
 		log.info("TakePhoto for Edge SN: {}", request.getBase().getSn());
 		handle(request.getBase(), edgeAdapterService.takePhoto(protoJsonMapper.map(request)), responseObserver);
