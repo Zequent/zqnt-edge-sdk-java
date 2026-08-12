@@ -112,7 +112,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				.thenAccept(result -> {
 					CustomCommandResponse.Builder builder = CustomCommandResponse.newBuilder()
 							.setCommandId(request.getCommandId())
-							.setMeta(responseMeta(request.getBase(), result.getMessage()));
+							.setMeta(responseMeta(request.getBase(), result));
 					if (result.isSuccess()) {
 						builder.setHasErrors(false).setEmpty(Empty.getDefaultInstance());
 					} else {
@@ -350,8 +350,10 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 
 	@Override
 	public void stopTask(TaskCommandRequest request, StreamObserver<CommandResponse> responseObserver) {
-		log.warn("StopTask for Edge SN: {}", request.getBase().getSn());
-		handle(request.getBase(), edgeAdapterService.stopTask(request.getTaskId()), responseObserver);
+		log.warn("StopTask (cancelExecution) for Edge SN: {}, externalExecutionId: {}",
+				request.getBase().getSn(), request.getTaskId());
+		handle(request.getBase(), edgeAdapterService.cancelExecution(
+				request.getBase().getSn(), request.getTaskId()), responseObserver);
 	}
 
 	@Override
@@ -380,7 +382,7 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 
 	protected CommandResponse toCommandResponse(RequestBase base, CommandResult result) {
 		CommandResponse.Builder builder = CommandResponse.newBuilder()
-				.setMeta(responseMeta(base, result.getMessage()));
+				.setMeta(responseMeta(base, result));
 
 		if (result.isSuccess()) {
 			return builder
@@ -423,6 +425,27 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 		set(builder::setAssetId, valueOrNull(base.hasAssetId(), base.getAssetId()));
 		set(builder::setExternalId, valueOrNull(base.hasExternalId(), base.getExternalId()));
 		set(builder::setResponseMessage, message);
+		return builder.build();
+	}
+
+	/**
+	 * Same as {@link #responseMeta(RequestBase, String)}, but prefers the vendor execution id
+	 * carried on an accepted/success {@link CommandResult} (its {@code tid}) over the request's
+	 * own correlation id, so callers tracking async command progress (e.g. mission-autonomy's
+	 * execution dispatcher) learn the vendor's real execution id instead of just their own.
+	 */
+	private ResponseMeta responseMeta(RequestBase base, CommandResult result) {
+		ResponseMeta.Builder builder = ResponseMeta.newBuilder()
+				.setTid(base.getTid())
+				.setSn(base.getSn())
+				.setTimestamp(ProtobufHelpers.now());
+
+		set(builder::setAssetId, valueOrNull(base.hasAssetId(), base.getAssetId()));
+		String vendorExecutionId = result.getExternalExecutionId();
+		String externalId = vendorExecutionId != null && !vendorExecutionId.isBlank()
+				? vendorExecutionId : valueOrNull(base.hasExternalId(), base.getExternalId());
+		set(builder::setExternalId, externalId);
+		set(builder::setResponseMessage, result.getMessage());
 		return builder.build();
 	}
 

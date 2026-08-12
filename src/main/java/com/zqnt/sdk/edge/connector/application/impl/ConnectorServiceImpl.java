@@ -8,11 +8,12 @@ import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.core.ProtobufHelpers;
-import com.zqnt.utils.mission.proto.*;
-import com.zqnt.utils.missionautonomy.domains.MissionDTO;
+import com.zqnt.utils.mission.proto.CreateSchedulerRequest;
+import com.zqnt.utils.mission.proto.DeleteSchedulerRequest;
+import com.zqnt.utils.mission.proto.GetSchedulerRequest;
+import com.zqnt.utils.mission.proto.UpdateSchedulerRequest;
 import com.zqnt.utils.missionautonomy.domains.OrganizationDTO;
 import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
-import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
@@ -300,187 +301,8 @@ public class ConnectorServiceImpl implements ConnectorService {
 				});
 	}
 
-	@Override
-	public CompletableFuture<MissionDTO> getMissionById(String id) {
-		var request = GetMissionRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTimestamp(ProtobufHelpers.now())
-						.setTid(UUID.randomUUID().toString())
-						.build())
-				.setMissionId(id)
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::getMission)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error getting Mission: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getMission());
-				});
-	}
-
-	@Override
-	public CompletableFuture<MissionDTO> createMission(MissionDTO missionDTO) {
-		var request = CreateMissionRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setMission(protoJsonMapper.map(missionDTO))
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::createMission)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error creating mission: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getMission());
-				});
-	}
-
-	@Override
-	public CompletableFuture<MissionDTO> updateMission(String id, MissionDTO missionDTO) {
-		var request = UpdateMissionRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setMissionId(id)
-				.setMission(protoJsonMapper.map(missionDTO))
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::updateMission)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error updating mission: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getMission());
-				});
-	}
-
-	@Override
-	public CompletableFuture<Boolean> deleteMission(String id) {
-		var request = DeleteMissionRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setMissionId(id)
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::deleteMission)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error deleting mission: {}", response.getError());
-						return false;
-					}
-					return true;
-				});
-	}
-
-	@Override
-	public CompletableFuture<TaskDTO> getTaskById(String id) {
-		var request = GetTaskRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setTaskId(id)
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::getTask)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error getting task: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getTask());
-				});
-	}
-
-	@Override
-	public CompletableFuture<TaskDTO> createTask(TaskDTO taskDTO) {
-		var request = CreateTaskRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setTask(protoJsonMapper.map(taskDTO))
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::createTask)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error creating task: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getTask());
-				});
-	}
-
-	@Override
-	public CompletableFuture<TaskDTO> updateTask(String id, TaskDTO taskDTO) {
-		var request = UpdateTaskRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setTaskId(id)
-				.setTask(protoJsonMapper.map(taskDTO))
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::updateTask)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error updating task: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getTask());
-				});
-	}
-
-	@Override
-	public CompletableFuture<Boolean> deleteTask(String id) {
-		var request = DeleteTaskRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setTaskId(id)
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::deleteTask)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error deleting task: {}", response.getError());
-						return false;
-					}
-					return true;
-				});
-	}
-
-	@Override
-	public CompletableFuture<TaskDTO> getTaskByFlightId(String flightId) {
-		var request = GetTaskByFlightIdRequest.newBuilder()
-				.setBase(RequestBase.newBuilder()
-						.setTid(UUID.randomUUID().toString())
-						.setTimestamp(ProtobufHelpers.now())
-						.build())
-				.setFlightId(flightId)
-				.build();
-
-		return callAsyncWithRetry(request, connectorServiceStub::getTaskByFlightId)
-				.thenApply(response -> {
-					if (response.getHasErrors()) {
-						log.error("Error getting task by flight id: {}", response.getError());
-						return null;
-					}
-					return protoJsonMapper.map(response.getTask());
-				});
-	}
+	// Mission/Task CRUD was retired from ConnectorService in favor of the capability-execution
+	// model (CapabilityPackage/CapabilityExecution); the underlying gRPC methods no longer exist.
 
 	@Override
 	public CompletableFuture<SchedulerDTO> getSchedulerById(String id) {

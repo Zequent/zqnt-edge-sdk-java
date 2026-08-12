@@ -496,12 +496,17 @@ public class ProtoJsonMapper {
 
         set(builder::id, uuid(proto.getId()));
         set(builder::name, proto.getName());
-        set(builder::missionId, uuid(proto.getMissionId()));
-        set(builder::taskId, uuid(proto.getTaskId()));
         set(builder::cronExpression, proto.getCronExpression());
         set(builder::active, valueOrNull(proto.hasActive(), proto.getActive()));
         set(builder::type, proto.getType());
         set(builder::clientTimeZone, valueOrNull(proto.hasClientTimeZone(), proto.getClientTimeZone()));
+        set(builder::assetSn, valueOrNull(proto.hasAssetSn(), proto.getAssetSn()));
+        set(builder::commandId, valueOrNull(proto.hasCommandId(), proto.getCommandId()));
+        set(builder::capabilityPackageId, valueOrNull(proto.hasCapabilityPackageId(), proto.getCapabilityPackageId()));
+        set(builder::capabilityId, valueOrNull(proto.hasCapabilityId(), proto.getCapabilityId()));
+        set(builder::executionParametersJson, proto.hasExecutionParameters()
+                ? ProtoJsonUtils.toJson(proto.getExecutionParameters()) : null);
+        set(builder::autoStart, valueOrNull(proto.hasAutoStart(), proto.getAutoStart()));
 
         return builder.build();
     }
@@ -514,12 +519,19 @@ public class ProtoJsonMapper {
 
         set(builder::setId, uuidString(dto.getId()));
         set(builder::setName, dto.getName());
-        set(builder::setMissionId, uuidString(dto.getMissionId()));
-        set(builder::setTaskId, uuidString(dto.getTaskId()));
         set(builder::setCronExpression, dto.getCronExpression());
         set(builder::setActive, dto.getActive());
         set(builder::setType, dto.getType());
         set(builder::setClientTimeZone, dto.getClientTimeZone());
+        set(builder::setAssetSn, dto.getAssetSn());
+        set(builder::setCommandId, dto.getCommandId());
+        set(builder::setCapabilityPackageId, dto.getCapabilityPackageId());
+        set(builder::setCapabilityId, dto.getCapabilityId());
+        if (dto.getExecutionParametersJson() != null) {
+            builder.setExecutionParameters((com.google.protobuf.Struct) ProtoJsonUtils.fromJson(
+                    dto.getExecutionParametersJson(), com.google.protobuf.Struct.newBuilder()));
+        }
+        set(builder::setAutoStart, dto.getAutoStart());
 
         return builder.build();
     }

@@ -4,10 +4,8 @@ package com.zqnt.sdk.edge.connector.application;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
-import com.zqnt.utils.missionautonomy.domains.MissionDTO;
 import com.zqnt.utils.missionautonomy.domains.OrganizationDTO;
 import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
-import com.zqnt.utils.missionautonomy.domains.TaskDTO;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -29,23 +27,9 @@ public interface ConnectorService {
 
 	CompletableFuture<Boolean> deRegisterAsset(String id);
 
-	CompletableFuture<MissionDTO> getMissionById(String id);
-
-	CompletableFuture<MissionDTO> createMission(MissionDTO missionDTO);
-
-	CompletableFuture<MissionDTO> updateMission(String id, MissionDTO missionDTO);
-
-	CompletableFuture<Boolean> deleteMission(String id);
-
-	CompletableFuture<TaskDTO> getTaskById(String id);
-
-	CompletableFuture<TaskDTO> createTask(TaskDTO taskDTO);
-
-	CompletableFuture<TaskDTO> updateTask(String id, TaskDTO taskDTO);
-
-	CompletableFuture<Boolean> deleteTask(String id);
-
-	CompletableFuture<TaskDTO> getTaskByFlightId(String flightId);
+	// Mission/Task CRUD was retired from ConnectorService in favor of the capability-execution
+	// model (CapabilityPackage/CapabilityExecution). Use MissionAutonomyService's capability
+	// execution APIs (via the client SDK) instead.
 
 	CompletableFuture<SchedulerDTO> getSchedulerById(String id);
 
