@@ -152,7 +152,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 	}
 
 	// Mission/Task CRUD was retired from MissionAutonomyService in favor of the
-	// capability-execution model (CapabilityPackage/CapabilityExecution); the underlying
+	// capability-execution model (Application/SkillExecution); the underlying
 	// gRPC methods no longer exist.
 
 	@Override

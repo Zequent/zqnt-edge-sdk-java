@@ -6,7 +6,6 @@ import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.common.proto.RequestBase;
-import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.mission.proto.CreateSchedulerRequest;
 import com.zqnt.utils.mission.proto.DeleteSchedulerRequest;
@@ -18,6 +17,7 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
@@ -302,7 +302,7 @@ public class ConnectorServiceImpl implements ConnectorService {
 	}
 
 	// Mission/Task CRUD was retired from ConnectorService in favor of the capability-execution
-	// model (CapabilityPackage/CapabilityExecution); the underlying gRPC methods no longer exist.
+	// model (Application/SkillExecution); the underlying gRPC methods no longer exist.
 
 	@Override
 	public CompletableFuture<SchedulerDTO> getSchedulerById(String id) {
@@ -401,6 +401,76 @@ public class ConnectorServiceImpl implements ConnectorService {
 						return null;
 					}
 					return protoJsonMapper.map(response.getOrganization());
+				});
+	}
+
+	@Override
+	public CompletableFuture<SkillContractProtoDTO> observeSkillContract(SkillContractProtoDTO contract) {
+		var request = UpsertSkillContractRequest.newBuilder()
+				.setBase(RequestBase.newBuilder().setTid(UUID.randomUUID().toString())
+						.setTimestamp(ProtobufHelpers.now()))
+				.setContract(contract).build();
+
+		return callAsyncWithRetry(request, connectorServiceStub::observeSkillContract)
+				.thenApply(response -> {
+					if (response.getHasErrors()) {
+						log.error("Error observing skill contract {}: {}", contract.getCommandId(), response.getError());
+						return null;
+					}
+					return response.getContract();
+				});
+	}
+
+	@Override
+	public CompletableFuture<List<SkillContractProtoDTO>> listSkillContracts(SkillContractStatus status, String commandId) {
+		var builder = ListSkillContractsRequest.newBuilder()
+				.setBase(RequestBase.newBuilder().setTid(UUID.randomUUID().toString())
+						.setTimestamp(ProtobufHelpers.now()));
+		if (status != null) builder.setStatus(status);
+		if (commandId != null && !commandId.isBlank()) builder.setCommandId(commandId);
+
+		return callAsyncWithRetry(builder.build(), connectorServiceStub::listSkillContracts)
+				.thenApply(response -> {
+					if (response.getHasErrors()) {
+						log.error("Error listing skill contracts: {}", response.getError());
+						return List.<SkillContractProtoDTO>of();
+					}
+					return response.getContractsList();
+				});
+	}
+
+	@Override
+	public CompletableFuture<SkillContractProtoDTO> setSkillContractStatus(String id, SkillContractStatus status) {
+		var request = SetSkillContractStatusRequest.newBuilder()
+				.setBase(RequestBase.newBuilder().setTid(UUID.randomUUID().toString())
+						.setTimestamp(ProtobufHelpers.now()))
+				.setId(id).setStatus(status).build();
+
+		return callAsyncWithRetry(request, connectorServiceStub::setSkillContractStatus)
+				.thenApply(response -> {
+					if (response.getHasErrors()) {
+						log.error("Error setting skill contract status for {}: {}", id, response.getError());
+						return null;
+					}
+					return response.getContract();
+				});
+	}
+
+	@Override
+	public CompletableFuture<SkillContractProtoDTO> setSkillContractPermissions(String id, List<String> requiredPermissions) {
+		var request = SetSkillContractPermissionsRequest.newBuilder()
+				.setBase(RequestBase.newBuilder().setTid(UUID.randomUUID().toString())
+						.setTimestamp(ProtobufHelpers.now()))
+				.setId(id).addAllRequiredPermissions(requiredPermissions == null ? List.of() : requiredPermissions)
+				.build();
+
+		return callAsyncWithRetry(request, connectorServiceStub::setSkillContractPermissions)
+				.thenApply(response -> {
+					if (response.getHasErrors()) {
+						log.error("Error setting skill contract permissions for {}: {}", id, response.getError());
+						return null;
+					}
+					return response.getContract();
 				});
 	}
 

@@ -4,9 +4,12 @@ package com.zqnt.sdk.edge.connector.application;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
+import com.zqnt.utils.connector.proto.SkillContractProtoDTO;
+import com.zqnt.utils.connector.proto.SkillContractStatus;
 import com.zqnt.utils.missionautonomy.domains.OrganizationDTO;
 import com.zqnt.utils.missionautonomy.domains.SchedulerDTO;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface ConnectorService {
@@ -28,7 +31,7 @@ public interface ConnectorService {
 	CompletableFuture<Boolean> deRegisterAsset(String id);
 
 	// Mission/Task CRUD was retired from ConnectorService in favor of the capability-execution
-	// model (CapabilityPackage/CapabilityExecution). Use MissionAutonomyService's capability
+	// model (Application/SkillExecution). Use MissionAutonomyService's capability
 	// execution APIs (via the client SDK) instead.
 
 	CompletableFuture<SchedulerDTO> getSchedulerById(String id);
@@ -41,6 +44,20 @@ public interface ConnectorService {
 
 	CompletableFuture<OrganizationDTO> getOrganizationById(String id);
 
+	// Skill Registry: lets an adapter self-report its own command contracts directly, instead of
+	// only ever being polled indirectly via EdgeAdapterService#getCapabilities.
 
+	/** Upserts {@code contract} into the persisted Skill Registry — new for a never-seen
+	 * (command_id, schema_version) pair, or refreshed content/last-seen for one already known. */
+	CompletableFuture<SkillContractProtoDTO> observeSkillContract(SkillContractProtoDTO contract);
 
+	/** {@code commandId}, when set, returns that command's full version history instead of the
+	 * whole registry (status is then ignored, matching the RPC's own semantics). Either argument
+	 * may be null. */
+	CompletableFuture<List<SkillContractProtoDTO>> listSkillContracts(SkillContractStatus status, String commandId);
+
+	CompletableFuture<SkillContractProtoDTO> setSkillContractStatus(String id, SkillContractStatus status);
+
+	/** Full replacement, not a merge. */
+	CompletableFuture<SkillContractProtoDTO> setSkillContractPermissions(String id, List<String> requiredPermissions);
 }

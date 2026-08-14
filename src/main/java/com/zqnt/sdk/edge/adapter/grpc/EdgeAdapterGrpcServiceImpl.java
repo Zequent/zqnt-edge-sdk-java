@@ -13,11 +13,11 @@ import com.zqnt.utils.common.proto.GlobalErrorMessage;
 import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.utils.common.proto.ResponseMeta;
 import com.zqnt.utils.core.ProtobufHelpers;
-import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -62,9 +62,8 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 				com.zqnt.utils.devicecontrol.proto.Capability.newBuilder()
 						.setCommandId(value.getCommand() == null ? "" : value.getCommand())
 						.setDisplayName(value.getCommand() == null ? "" : value.getCommand())
-						.setState(Boolean.TRUE.equals(value.getAvailable())
-								? CapabilityState.CAPABILITY_STATE_AVAILABLE
-								: CapabilityState.CAPABILITY_STATE_TEMPORARILY_UNAVAILABLE);
+						.setState(value.getState() == null
+								? CapabilityState.CAPABILITY_STATE_AVAILABLE : value.getState());
 		if (value.getDescription() != null) builder.setDescription(value.getDescription());
 		if (value.getUnavailableReason() != null) builder.setUnavailableReason(value.getUnavailableReason());
 		if (value.getMetadata() != null) builder.putAllMetadata(value.getMetadata());
@@ -75,7 +74,42 @@ public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapt
 		CapabilityTarget.Builder target = CapabilityTarget.newBuilder().setType(value.getTargetType() == null
 				? CapabilityTargetType.CAPABILITY_TARGET_TYPE_ASSET : value.getTargetType());
 		if (value.getTargetRef() != null) target.setTargetRef(value.getTargetRef());
-		return builder.setTarget(target).build();
+		builder.setTarget(target);
+		if (value.getErrors() != null) {
+			value.getErrors().forEach(error -> builder.addErrors(toProto(error)));
+		}
+		if (value.getEvents() != null) {
+			value.getEvents().forEach(event -> builder.addEvents(toProto(event)));
+		}
+		if (value.getRequirements() != null) builder.setRequirements(toProto(value.getRequirements()));
+		if (value.getSkillId() != null) builder.setSkillId(value.getSkillId());
+		if (value.getSource() != null) builder.setSource(value.getSource());
+		if (value.getProvider() != null) builder.setProvider(value.getProvider());
+		return builder.build();
+	}
+
+	private CapabilityErrorProto toProto(com.zqnt.sdk.edge.adapter.domains.CapabilityError value) {
+		CapabilityErrorProto.Builder builder = CapabilityErrorProto.newBuilder()
+				.setCode(value.getCode() == null ? "" : value.getCode());
+		if (value.getDescription() != null) builder.setDescription(value.getDescription());
+		return builder.build();
+	}
+
+	private CapabilityEventProto toProto(com.zqnt.sdk.edge.adapter.domains.CapabilityEvent value) {
+		CapabilityEventProto.Builder builder = CapabilityEventProto.newBuilder()
+				.setName(value.getName() == null ? "" : value.getName())
+				.setPayloadSchema(mapToStruct(value.getPayloadSchema() == null ? Map.of() : value.getPayloadSchema()));
+		if (value.getDescription() != null) builder.setDescription(value.getDescription());
+		return builder.build();
+	}
+
+	private CapabilityRequirementsProto toProto(com.zqnt.sdk.edge.adapter.domains.CapabilityRequirements value) {
+		return CapabilityRequirementsProto.newBuilder()
+				.addAllAssetTypes(value.getAssetTypes() == null ? List.of() : value.getAssetTypes())
+				.addAllPayloads(value.getPayloads() == null ? List.of() : value.getPayloads())
+				.addAllRuntimeFeatures(value.getRuntimeFeatures() == null ? List.of() : value.getRuntimeFeatures())
+				.setProperties(mapToStruct(value.getProperties() == null ? Map.of() : value.getProperties()))
+				.build();
 	}
 
 	private Struct mapToStruct(Map<String, Object> values) {

@@ -2,8 +2,6 @@ package com.zqnt.sdk.edge.application;
 
 import com.google.protobuf.Timestamp;
 import com.zqnt.sdk.edge.adapter.domains.*;
-import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
-import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
 import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
@@ -13,13 +11,10 @@ import com.zqnt.utils.common.proto.AssetProtoDTO;
 import com.zqnt.utils.common.proto.OrganizationProtoDTO;
 import com.zqnt.utils.common.proto.SubAssetProtoDTO;
 import com.zqnt.utils.core.ProtoJsonUtils;
-import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.mission.proto.MissionProtoDTO;
 import com.zqnt.utils.mission.proto.SchedulerProtoDTO;
 import com.zqnt.utils.mission.proto.TaskProtoDTO;
 import com.zqnt.utils.mission.proto.WaypointProtoDTO;
-import com.zqnt.utils.missionautonomy.domains.*;
-import com.zqnt.utils.missionautonomy.domains.config.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -502,8 +497,8 @@ public class ProtoJsonMapper {
         set(builder::clientTimeZone, valueOrNull(proto.hasClientTimeZone(), proto.getClientTimeZone()));
         set(builder::assetSn, valueOrNull(proto.hasAssetSn(), proto.getAssetSn()));
         set(builder::commandId, valueOrNull(proto.hasCommandId(), proto.getCommandId()));
-        set(builder::capabilityPackageId, valueOrNull(proto.hasCapabilityPackageId(), proto.getCapabilityPackageId()));
-        set(builder::capabilityId, valueOrNull(proto.hasCapabilityId(), proto.getCapabilityId()));
+        set(builder::capabilityPackageId, valueOrNull(proto.hasApplicationId(), proto.getApplicationId()));
+        set(builder::capabilityId, valueOrNull(proto.hasSkillId(), proto.getSkillId()));
         set(builder::executionParametersJson, proto.hasExecutionParameters()
                 ? ProtoJsonUtils.toJson(proto.getExecutionParameters()) : null);
         set(builder::autoStart, valueOrNull(proto.hasAutoStart(), proto.getAutoStart()));
@@ -525,8 +520,8 @@ public class ProtoJsonMapper {
         set(builder::setClientTimeZone, dto.getClientTimeZone());
         set(builder::setAssetSn, dto.getAssetSn());
         set(builder::setCommandId, dto.getCommandId());
-        set(builder::setCapabilityPackageId, dto.getCapabilityPackageId());
-        set(builder::setCapabilityId, dto.getCapabilityId());
+        set(builder::setApplicationId, dto.getCapabilityPackageId());
+        set(builder::setSkillId, dto.getCapabilityId());
         if (dto.getExecutionParametersJson() != null) {
             builder.setExecutionParameters((com.google.protobuf.Struct) ProtoJsonUtils.fromJson(
                     dto.getExecutionParametersJson(), com.google.protobuf.Struct.newBuilder()));
