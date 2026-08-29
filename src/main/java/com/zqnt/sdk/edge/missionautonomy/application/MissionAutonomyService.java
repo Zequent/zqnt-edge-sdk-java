@@ -17,7 +17,7 @@ public interface MissionAutonomyService {
 
 	CompletableFuture<TaskDTO> getTask(GetTaskRequest getTaskRequest);
 
-	CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskRequest getTaskRequest);
+	CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskByFlightIdRequest getTaskRequest);
 
 	CompletableFuture<SchedulerDTO> getScheduler(GetSchedulerRequest getSchedulerRequest);
 }

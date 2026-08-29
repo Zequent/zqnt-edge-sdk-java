@@ -4,7 +4,7 @@ import com.zqnt.sdk.edge.adapter.domains.DetectionRequestData;
 import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
 import com.zqnt.sdk.edge.adapter.domains.TelemetryRequestData;
 import com.zqnt.utils.common.proto.DetectionBatch;
-import com.zqnt.utils.livedata.proto.ProduceNotificationRequest;
+import com.zqnt.utils.events.proto.ProduceNotificationRequest;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 
 import java.util.concurrent.CompletableFuture;

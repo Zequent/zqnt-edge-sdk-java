@@ -11,7 +11,6 @@ import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 @Slf4j
@@ -161,7 +160,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error creating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				})
 				.exceptionally(t -> {
 					log.error("Error creating mission", t);
@@ -178,7 +177,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error updating mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				})
 				.exceptionally(t -> {
 					log.error("Error updating mission", t);
@@ -194,7 +193,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting mission: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getMissionDto());
+					return protoJsonMapper.map(response.getMission());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting mission", t);
@@ -210,7 +209,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting task: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting task", t);
@@ -219,14 +218,14 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 	}
 
 	@Override
-	public CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskRequest getTaskRequest) {
+	public CompletableFuture<TaskDTO> getTaskByFlightId(GetTaskByFlightIdRequest getTaskRequest) {
 		return callAsyncWithRetry(getTaskRequest, missionAutonomyServiceStub::getTaskByFlightId)
 				.thenApply(response -> {
 					if (response.getHasErrors()) {
 						log.error("Error getting task by flight id: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getTaskDto());
+					return protoJsonMapper.map(response.getTask());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting task by flight id", t);
@@ -242,7 +241,7 @@ public class MissionAutonomyServiceImpl implements MissionAutonomyService {
 						log.error("Error getting scheduler: {}", response.getError());
 						return null;
 					}
-					return protoJsonMapper.map(response.getSchedulerDto());
+					return protoJsonMapper.map(response.getScheduler());
 				})
 				.exceptionally(t -> {
 					log.error("Error getting scheduler", t);

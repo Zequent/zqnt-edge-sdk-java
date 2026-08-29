@@ -2,9 +2,16 @@ package com.zqnt.sdk.edge.adapter.application;
 
 import com.zqnt.sdk.edge.adapter.domains.*;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public interface EdgeAdapterService {
+
+	default CompletableFuture<CommandResult> sendCustomCommand(String sn, String componentId,
+			String commandType, Map<String, Object> params) {
+		return CompletableFuture.completedFuture(
+				CommandResult.notImplemented("Custom command is not implemented for this asset", sn));
+	}
 
 	/**
 	 * Execute takeoff command
@@ -199,7 +206,6 @@ public interface EdgeAdapterService {
 		);
 	}
 
-
 	/**
 	 * Enter remote debug mode
 	 * Default: Returns NOT_IMPLEMENTED error
@@ -230,6 +236,15 @@ public interface EdgeAdapterService {
 		);
 	}
 
+	/**
+	 * Enable or disable the livestream split-screen view.
+	 * Default: Returns NOT_IMPLEMENTED error
+	 */
+	default CompletableFuture<CommandResult> liveStreamSplitScreen(String sn, boolean enabled) {
+		return CompletableFuture.completedFuture(
+			CommandResult.notImplemented("liveStreamSplitScreen is not implemented for this asset", sn)
+		);
+	}
 	/**
 	 * Enable gimbal tracking
 	 * Default: Returns NOT_IMPLEMENTED error

@@ -2,10 +2,7 @@ package com.zqnt.sdk.edge.livedata.application;
 
 import com.zqnt.sdk.edge.adapter.domains.NotificationRequestData;
 import com.zqnt.sdk.edge.support.MapperSupport;
-import com.zqnt.utils.livedata.proto.AssetStatusEvent;
-import com.zqnt.utils.livedata.proto.OperationEvent;
-import com.zqnt.utils.livedata.proto.ProduceNotificationRequest;
-import com.zqnt.utils.livedata.proto.TaskEvent;
+import com.zqnt.utils.events.proto.*;
 
 /**
  * Mapper for converting notification POJO data to Proto messages and vice versa.
@@ -24,10 +21,11 @@ public class NotificationMapper {
 			data.setTimestamp(MapperSupport.toLocalDateTime(request.getBase().getTimestamp()));
 		}
 
-		switch (request.getEventCase()) {
-			case ASSET_STATUS -> data.setAssetStatusEvent(map(request.getAssetStatus()));
-			case TASK_EVENT -> data.setTaskEvent(map(request.getTaskEvent()));
-			case OPERATION_EVENT -> data.setOperationEvent(map(request.getOperationEvent()));
+		NotificationEvent event = request.getEvent();
+		switch (event.getEventCase()) {
+			case ASSET_STATUS -> data.setAssetStatusEvent(map(event.getAssetStatus()));
+			case TASK -> data.setTaskEvent(map(event.getTask()));
+			case MISSION -> data.setMissionEvent(map(event.getMission()));
 			default -> { /* no-op for ERROR or EVENT_NOT_SET */ }
 		}
 
@@ -43,13 +41,15 @@ public class NotificationMapper {
 				.setBase(baseBuilder.build());
 		builder.setSeverity(requestData.getSeverity());
 		builder.setEventType(requestData.getEventType());
+		NotificationEvent.Builder eventBuilder = NotificationEvent.newBuilder();
 		if (requestData.getAssetStatusEvent() != null) {
-			builder.setAssetStatus(map(requestData.getAssetStatusEvent()));
+			eventBuilder.setAssetStatus(map(requestData.getAssetStatusEvent()));
 		} else if (requestData.getTaskEvent() != null) {
-			builder.setTaskEvent(map(requestData.getTaskEvent()));
-		} else if (requestData.getOperationEvent() != null) {
-			builder.setOperationEvent(map(requestData.getOperationEvent()));
+			eventBuilder.setTask(map(requestData.getTaskEvent()));
+		} else if (requestData.getMissionEvent() != null) {
+			eventBuilder.setMission(map(requestData.getMissionEvent()));
 		}
+		builder.setEvent(eventBuilder.build());
 
 		return builder.build();
 	}
@@ -94,18 +94,18 @@ public class NotificationMapper {
 		return builder.build();
 	}
 
-	private NotificationRequestData.OperationEventData map(OperationEvent proto) {
-		return NotificationRequestData.OperationEventData.builder()
-				.operationId(proto.getOperationId())
+	private NotificationRequestData.MissionEventData map(MissionEvent proto) {
+		return NotificationRequestData.MissionEventData.builder()
+				.missionId(proto.getMissionId())
 				.missionType(proto.getMissionType())
 				.status(proto.getStatus())
 				.message(proto.hasMessage() ? proto.getMessage() : null)
 				.build();
 	}
 
-	private OperationEvent map(NotificationRequestData.OperationEventData data) {
-		OperationEvent.Builder builder = OperationEvent.newBuilder()
-				.setOperationId(MapperSupport.defaultString(data.getOperationId()));
+	private MissionEvent map(NotificationRequestData.MissionEventData data) {
+		MissionEvent.Builder builder = MissionEvent.newBuilder()
+				.setMissionId(MapperSupport.defaultString(data.getMissionId()));
 		MapperSupport.set(builder::setMissionType, data.getMissionType());
 		MapperSupport.set(builder::setStatus, data.getStatus());
 		MapperSupport.set(builder::setMessage, data.getMessage());

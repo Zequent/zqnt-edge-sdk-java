@@ -1,9 +1,9 @@
 package com.zqnt.sdk.edge.livedata.application.impl;
 
 import com.zqnt.utils.common.proto.DetectionBatch;
+import com.zqnt.utils.events.proto.ProduceNotificationRequest;
 import com.zqnt.utils.livedata.proto.LiveDataResponse;
 import com.zqnt.utils.livedata.proto.LiveDataServiceGrpc;
-import com.zqnt.utils.livedata.proto.ProduceNotificationRequest;
 import com.zqnt.utils.livedata.proto.ProduceTelemetryRequest;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
