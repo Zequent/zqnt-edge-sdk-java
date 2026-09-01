@@ -13,6 +13,7 @@ import com.zqnt.utils.common.proto.GlobalErrorMessage;
 import com.zqnt.utils.common.proto.RequestBase;
 import com.zqnt.utils.common.proto.ResponseMeta;
 import com.zqnt.utils.core.ProtobufHelpers;
+import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.edge.sdk.proto.EdgeAdapterServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+
+// Named, not wildcard: com.zqnt.utils.devicecontrol.proto also declares ManualControlInput/
+// Capability, colliding with this SDK's own com.zqnt.sdk.edge.adapter.domains versions above.
 
 @Slf4j
 public class EdgeAdapterGrpcServiceImpl extends EdgeAdapterServiceGrpc.EdgeAdapterServiceImplBase {

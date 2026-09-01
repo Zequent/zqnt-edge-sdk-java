@@ -11,10 +11,13 @@ import com.zqnt.utils.common.proto.AssetProtoDTO;
 import com.zqnt.utils.common.proto.OrganizationProtoDTO;
 import com.zqnt.utils.common.proto.SubAssetProtoDTO;
 import com.zqnt.utils.core.ProtoJsonUtils;
+import com.zqnt.utils.devicecontrol.proto.*;
 import com.zqnt.utils.mission.proto.MissionProtoDTO;
 import com.zqnt.utils.mission.proto.SchedulerProtoDTO;
 import com.zqnt.utils.mission.proto.TaskProtoDTO;
 import com.zqnt.utils.mission.proto.WaypointProtoDTO;
+import com.zqnt.utils.missionautonomy.domains.*;
+import com.zqnt.utils.missionautonomy.domains.config.*;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -23,6 +26,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+// Named, not wildcard: com.zqnt.utils.devicecontrol.proto and com.zqnt.sdk.edge.adapter.domains
+// (wildcard-imported above) both declare a ReturnToHomeRequest/ManualControlInput — this SDK's own
+// domain POJOs (the mapper's *output* type) are what every method signature below actually needs;
+// only the proto *input* types below are pulled from devicecontrol.proto specifically.
 
 /**
  * Simple mapper implementation for converting between Proto and POJO models

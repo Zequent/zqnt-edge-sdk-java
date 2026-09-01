@@ -6,6 +6,7 @@ import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
 import com.zqnt.utils.asset.domains.SubAssetDTO;
 import com.zqnt.utils.common.proto.RequestBase;
+import com.zqnt.utils.connector.proto.*;
 import com.zqnt.utils.core.ProtobufHelpers;
 import com.zqnt.utils.mission.proto.CreateSchedulerRequest;
 import com.zqnt.utils.mission.proto.DeleteSchedulerRequest;
