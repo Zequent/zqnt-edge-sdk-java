@@ -2,6 +2,11 @@ package com.zqnt.sdk.edge.application;
 
 import com.google.protobuf.Timestamp;
 import com.zqnt.sdk.edge.adapter.domains.*;
+// Explicit imports for domain classes whose short name also exists in com.zqnt.utils.devicecontrol.proto
+// (wildcard-imported below) -- a single-class import takes precedence over a wildcard, resolving the
+// ambiguity in favor of this SDK's own domain type rather than the raw proto-generated one.
+import com.zqnt.sdk.edge.adapter.domains.ReturnToHomeRequest;
+import com.zqnt.sdk.edge.adapter.domains.ManualControlInput;
 import com.zqnt.utils.JsonUtils;
 import com.zqnt.utils.asset.domains.AssetDTO;
 import com.zqnt.utils.asset.domains.AssetPayloadDTO;
